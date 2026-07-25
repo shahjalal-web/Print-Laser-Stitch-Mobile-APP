@@ -7,24 +7,35 @@ import '@/global.css';
 
 import { Platform } from 'react-native';
 
+// Ported from the website's neon-black theme (src/app/globals.css on the
+// Next.js site). The brand is always this dark palette — it does not adapt
+// to the system light/dark setting, so both variants below stay identical.
+const brandDark = {
+  text: '#f5f5f5',
+  textSecondary: 'rgba(245, 245, 245, 0.6)',
+  background: '#050505',
+  backgroundElement: '#121212',
+  backgroundSelected: '#1e1e1e',
+  border: 'rgba(255, 255, 255, 0.08)',
+  borderStrong: 'rgba(255, 255, 255, 0.16)',
+} as const;
+
 export const Colors = {
-  light: {
-    text: '#000000',
-    background: '#ffffff',
-    backgroundElement: '#F0F0F3',
-    backgroundSelected: '#E0E1E6',
-    textSecondary: '#60646C',
-  },
-  dark: {
-    text: '#ffffff',
-    background: '#000000',
-    backgroundElement: '#212225',
-    backgroundSelected: '#2E3135',
-    textSecondary: '#B0B4BA',
-  },
+  light: brandDark,
+  dark: brandDark,
 } as const;
 
 export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
+
+// Neon brand accents used across CTAs, glows, and gradients on the website.
+export const Brand = {
+  yellow: '#d9f000',
+  yellowStrong: '#b8cc00',
+  cyan: '#18d3e8',
+  cyanStrong: '#14b8ce',
+  magenta: '#d94cb3',
+  magentaStrong: '#b83a96',
+} as const;
 
 export const Fonts = Platform.select({
   ios: {
