@@ -18,6 +18,8 @@ export default function RootLayout() {
           <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="(tabs)" />
             <Stack.Screen name="vehicle-stickers" />
+            <Stack.Screen name="gallery" />
+            <Stack.Screen name="search" options={{ presentation: 'modal', headerShown: true, title: 'Search' }} />
             <Stack.Screen name="more" options={{ presentation: 'modal', headerShown: true, title: 'More' }} />
             <Stack.Screen name="login" options={{ presentation: 'modal', headerShown: true, title: 'Log In' }} />
             <Stack.Screen name="signup" options={{ presentation: 'modal', headerShown: true, title: 'Sign Up' }} />

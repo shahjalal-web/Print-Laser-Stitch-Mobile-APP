@@ -57,7 +57,7 @@ export default function AccountScreen() {
 
         <View style={styles.menu}>
           <MenuLink href="/account/orders" label="Orders" />
-          <MenuLink href="/account/qr-codes" label="QR Codes" />
+          <MenuLink href="/account/qr-codes/index" label="QR Codes" />
           <MenuLink href="/account/edit-profile" label="Edit Profile" />
           <MenuLink href="/account/change-password" label="Change Password" />
         </View>
@@ -76,7 +76,7 @@ function MenuLink({
   href,
   label,
 }: {
-  href: '/account/orders' | '/account/qr-codes' | '/account/edit-profile' | '/account/change-password';
+  href: '/account/orders' | '/account/qr-codes/index' | '/account/edit-profile' | '/account/change-password';
   label: string;
 }) {
   return (

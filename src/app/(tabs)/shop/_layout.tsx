@@ -1,8 +1,8 @@
 import { Stack } from 'expo-router';
+import { View, useColorScheme } from 'react-native';
 
-import { MenuButton } from '@/components/menu-button';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from 'react-native';
+import { MenuButton, SearchButton } from '@/components/menu-button';
+import { Colors, Spacing } from '@/constants/theme';
 
 export default function ShopLayout() {
   const scheme = useColorScheme();
@@ -15,7 +15,18 @@ export default function ShopLayout() {
         headerTintColor: colors.text,
         headerShadowVisible: false,
       }}>
-      <Stack.Screen name="index" options={{ title: 'Shop', headerRight: () => <MenuButton /> }} />
+      <Stack.Screen
+        name="index"
+        options={{
+          title: 'Shop',
+          headerRight: () => (
+            <View style={{ flexDirection: 'row', gap: Spacing.two }}>
+              <SearchButton />
+              <MenuButton />
+            </View>
+          ),
+        }}
+      />
       <Stack.Screen name="[handle]" options={{ title: '' }} />
       <Stack.Screen name="product/[handle]" options={{ title: '' }} />
     </Stack>

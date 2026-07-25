@@ -16,9 +16,18 @@ export function MenuButton() {
   );
 }
 
+export function SearchButton() {
+  return (
+    <Pressable style={styles.button} onPress={() => router.push('/search')} hitSlop={8}>
+      <Ionicons name="search-outline" size={22} color="#f5f5f5" />
+    </Pressable>
+  );
+}
+
 export function MenuButtonRow() {
   return (
     <View style={styles.row}>
+      <SearchButton />
       <MenuButton />
     </View>
   );
@@ -28,6 +37,7 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
+    gap: Spacing.two,
     paddingHorizontal: Spacing.four,
     paddingTop: Spacing.two,
   },

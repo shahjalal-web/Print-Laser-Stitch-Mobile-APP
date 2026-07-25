@@ -18,6 +18,24 @@ type MenuItem = {
 export default function MoreScreen() {
   const items: MenuItem[] = [
     {
+      label: 'Search',
+      description: 'Find a product by name',
+      icon: 'search-outline',
+      action: () => {
+        router.dismiss();
+        router.push('/search');
+      },
+    },
+    {
+      label: 'Gallery',
+      description: 'See our recent work',
+      icon: 'images-outline',
+      action: () => {
+        router.dismiss();
+        router.push('/gallery/index');
+      },
+    },
+    {
       label: 'Vehicle Sticker Kits',
       description: 'Find decals for your exact make, model and year',
       icon: 'car-sport-outline',
@@ -46,12 +64,6 @@ export default function MoreScreen() {
       description: 'Print, design & install pricing',
       icon: 'construct-outline',
       action: () => WebBrowser.openBrowserAsync(`${SITE_ORIGIN}/signage-quotes`),
-    },
-    {
-      label: 'Gallery',
-      description: 'See our recent work',
-      icon: 'images-outline',
-      action: () => WebBrowser.openBrowserAsync(`${SITE_ORIGIN}/gallery`),
     },
     {
       label: 'Blog',
