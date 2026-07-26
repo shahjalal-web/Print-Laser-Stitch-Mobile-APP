@@ -35,7 +35,15 @@
           "imageWidth": 76
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-sharing",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Print Laser Stitch needs access to your photos so you can upload artwork to print.",
+          "cameraPermission": "Print Laser Stitch needs access to your camera so you can photograph artwork to print."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

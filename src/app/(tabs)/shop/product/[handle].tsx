@@ -1,14 +1,29 @@
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Dimensions, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  View,
+} from 'react-native';
 
 import { ScreenBackground } from '@/components/screen-background';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { EMPTY_UPLOAD_SLOT, pickAndUpload, UploadBox, type UploadSlot } from '@/components/template-fit/upload-box';
 import { Brand, Spacing } from '@/constants/theme';
 import { api } from '@/lib/api';
 import { useCart } from '@/lib/cart-store';
+import { downloadAndShareBlankTemplate } from '@/lib/template-fit/blank-template';
+import { BLEED_IN } from '@/lib/template-fit/constants';
+import { detectTemplateFit, type TemplateFitOverrides } from '@/lib/template-fit/detect';
+import { findDimensionOption } from '@/lib/parse-size';
+import type { TemplateFitPayload } from '@/lib/template-fit/types';
 
 type ShopifyImageT = { url: string; altText: string | null };
 type ShopifyMediaT =
@@ -35,6 +50,7 @@ type Product = {
   media: ShopifyMediaT[];
   options: Option[];
   variants: Variant[];
+  templateFitOverrides?: TemplateFitOverrides;
 };
 
 function stripHtml(html: string): string {
@@ -63,6 +79,12 @@ export default function ProductScreen() {
   const [product, setProduct] = useState<Product | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   const [selected, setSelected] = useState<Record<string, string>>({});
+  const [frontUpload, setFrontUpload] = useState<UploadSlot>(EMPTY_UPLOAD_SLOT);
+  const [backUpload, setBackUpload] = useState<UploadSlot>(EMPTY_UPLOAD_SLOT);
+  const [printSide, setPrintSide] = useState<'front' | 'both'>('front');
+  const [phone, setPhone] = useState('');
+  const [instructions, setInstructions] = useState('');
+  const [downloadingTemplate, setDownloadingTemplate] = useState(false);
 
   useEffect(() => {
     api
@@ -97,8 +119,45 @@ export default function ProductScreen() {
     return fromMedia.length > 0 ? fromMedia : product.featuredImage ? [product.featuredImage.url] : [];
   }, [product]);
 
+  const detection = useMemo(() => {
+    if (!product) return null;
+    return detectTemplateFit(product, selected, product.templateFitOverrides ?? {}, printSide, BLEED_IN);
+  }, [product, selected, printSide]);
+
+  const needsFront = detection ? detection.effectiveUploadMode !== 'none' : false;
+  const needsBack = detection?.effectiveUploadMode === 'front-back';
+  const frontReady = !needsFront || (!!frontUpload.fileUrl && !frontUpload.isUploading);
+  const backReady = !needsBack || (!!backUpload.fileUrl && !backUpload.isUploading);
+  const anyUploading = frontUpload.isUploading || backUpload.isUploading;
+  const willUseTemplateFit = !!detection?.templateFitEnabled && !!detection.sizeInches;
+
+  const canCheckout = !!activeVariant && frontReady && backReady && !anyUploading;
+
+  function buildExtraProperties(): Record<string, string> {
+    const extraProperties: Record<string, string> = {};
+    if (detection?.effectiveUploadMode === 'single' && frontUpload.fileUrl) {
+      extraProperties[`${detection.uploadLabel} File`] = frontUpload.fileUrl;
+      if (frontUpload.file?.name) extraProperties[`${detection.uploadLabel} Filename`] = frontUpload.file.name;
+    } else if (detection?.effectiveUploadMode === 'front-back') {
+      if (frontUpload.fileUrl) {
+        extraProperties['Front Design'] = frontUpload.fileUrl;
+        if (frontUpload.file?.name) extraProperties['Front Design Filename'] = frontUpload.file.name;
+      }
+      if (backUpload.fileUrl) {
+        extraProperties['Back Design'] = backUpload.fileUrl;
+        if (backUpload.file?.name) extraProperties['Back Design Filename'] = backUpload.file.name;
+      }
+    }
+    if (detection?.showSideSelector) {
+      extraProperties['Print Sides'] = printSide === 'both' ? 'Front & Back' : 'Front Only';
+    }
+    if (phone.trim()) extraProperties['Phone Number'] = phone.trim();
+    if (instructions.trim()) extraProperties['Instructions'] = instructions.trim();
+    return extraProperties;
+  }
+
   function handleAddToCart() {
-    if (!product || !activeVariant) return;
+    if (!product || !activeVariant || !canCheckout) return;
     const unitPrice = Number(activeVariant.price);
     addItem({
       kind: 'product',
@@ -115,11 +174,84 @@ export default function ProductScreen() {
       quantity: 1,
       unitPrice,
       totalPrice: unitPrice,
+      extraProperties: buildExtraProperties(),
     });
     Alert.alert('Added to cart', product.title, [
       { text: 'Keep Shopping', style: 'cancel' },
       { text: 'View Cart', onPress: () => router.push('/cart') },
     ]);
+  }
+
+  function handleContinueToTemplateFit() {
+    if (!product || !activeVariant || !canCheckout || !detection?.sizeInches) return;
+    const unitPrice = Number(activeVariant.price);
+    const extraProperties: Record<string, string> = {};
+    if (detection.showSideSelector) {
+      extraProperties['Print Sides'] = printSide === 'both' ? 'Front & Back' : 'Front Only';
+    }
+    if (phone.trim()) extraProperties['Phone Number'] = phone.trim();
+    if (instructions.trim()) extraProperties['Instructions'] = instructions.trim();
+
+    const sides: TemplateFitPayload['sides'] = {};
+    if (needsFront && frontUpload.fileUrl) {
+      sides.front = { fileUrl: frontUpload.fileUrl, fileName: frontUpload.file?.name ?? null };
+    }
+    if (needsBack && backUpload.fileUrl) {
+      sides.back = { fileUrl: backUpload.fileUrl, fileName: backUpload.file?.name ?? null };
+    }
+
+    const payload: TemplateFitPayload = {
+      productHandle: product.handle,
+      productTitle: product.title,
+      widthIn: detection.sizeInches.width,
+      heightIn: detection.sizeInches.height,
+      uploadLabel: detection.uploadLabel,
+      effectiveUploadMode: detection.effectiveUploadMode === 'front-back' ? 'front-back' : 'single',
+      sides,
+      bleedIn: detection.bleedIn,
+      sizeUnit: detection.sizeUnit,
+      variants: product.variants.map((v) => ({
+        id: v.id,
+        price: v.price,
+        selectedOptions: Object.fromEntries(v.selectedOptions.map((o) => [o.name, o.value])),
+      })),
+      cartItem: {
+        title: product.title,
+        thumbnail: images[0] ?? '',
+        unitPrice,
+        qty: 1,
+        variantId: activeVariant.id,
+        productTitle: product.title,
+        selectedOptions: selected,
+        extraProperties,
+        editHref: `/shop/product/${product.handle}`,
+      },
+    };
+
+    router.push({
+      pathname: '/template-fit/[handle]',
+      params: { handle: product.handle, payload: JSON.stringify(payload) },
+    });
+  }
+
+  async function handleDownloadBlankTemplate() {
+    if (!product || !detection?.sizeInches) return;
+    setDownloadingTemplate(true);
+    try {
+      const sizeOpt = findDimensionOption(product.options);
+      const sizeLabel = sizeOpt ? selected[sizeOpt.name] : `${detection.sizeInches.width}x${detection.sizeInches.height}`;
+      await downloadAndShareBlankTemplate({
+        widthIn: detection.sizeInches.width,
+        heightIn: detection.sizeInches.height,
+        sizeLabel: sizeLabel ?? `${detection.sizeInches.width}x${detection.sizeInches.height}`,
+        productTitle: product.title,
+        bleedIn: detection.bleedIn,
+      });
+    } catch {
+      Alert.alert('Could not prepare the template', 'Please try again.');
+    } finally {
+      setDownloadingTemplate(false);
+    }
   }
 
   if (!product && !loadFailed) {
@@ -200,14 +332,123 @@ export default function ProductScreen() {
           </ThemedText>
         )}
 
-        <Pressable
-          style={[styles.cartButton, activeVariant && !activeVariant.availableForSale && styles.cartButtonDisabled]}
-          disabled={!activeVariant || !activeVariant.availableForSale}
-          onPress={handleAddToCart}>
-          <ThemedText type="smallBold" style={styles.cartButtonText}>
-            {activeVariant && !activeVariant.availableForSale ? 'Unavailable' : 'Add to Cart'}
+        {detection?.templateFitEnabled && (
+          <Pressable
+            style={styles.templateDownload}
+            disabled={downloadingTemplate || !detection.sizeInches}
+            onPress={handleDownloadBlankTemplate}>
+            {downloadingTemplate ? (
+              <ActivityIndicator color={Brand.cyan} />
+            ) : (
+              <ThemedText type="small" style={{ color: Brand.cyan }}>
+                ⬇ Download a blank template (PDF)
+              </ThemedText>
+            )}
+          </Pressable>
+        )}
+
+        {detection?.showSideSelector && (
+          <View style={styles.optionGroup}>
+            <ThemedText type="smallBold" style={styles.optionLabel}>
+              Print side
+            </ThemedText>
+            <View style={styles.optionValues}>
+              {(['front', 'both'] as const).map((s) => (
+                <Pressable
+                  key={s}
+                  onPress={() => setPrintSide(s)}
+                  style={[styles.chip, printSide === s && styles.chipActive]}>
+                  <ThemedText
+                    type="small"
+                    style={printSide === s ? styles.chipTextActive : undefined}
+                    themeColor={printSide === s ? undefined : 'textSecondary'}>
+                    {s === 'both' ? 'Front & Back' : 'Front Only'}
+                  </ThemedText>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {needsFront && (
+          <View style={styles.optionGroup}>
+            <ThemedText type="smallBold" style={styles.optionLabel}>
+              Upload your design
+            </ThemedText>
+            <View style={styles.uploadRow}>
+              <UploadBox
+                label={needsBack ? 'Front design' : undefined}
+                slot={frontUpload}
+                onSelect={() => pickAndUpload(setFrontUpload)}
+                onClear={() => setFrontUpload(EMPTY_UPLOAD_SLOT)}
+              />
+              {needsBack && (
+                <UploadBox
+                  label="Back design"
+                  slot={backUpload}
+                  onSelect={() => pickAndUpload(setBackUpload)}
+                  onClear={() => setBackUpload(EMPTY_UPLOAD_SLOT)}
+                />
+              )}
+            </View>
+          </View>
+        )}
+
+        <View style={styles.optionGroup}>
+          <ThemedText type="smallBold" style={styles.optionLabel}>
+            Phone number (optional)
           </ThemedText>
+          <TextInput
+            value={phone}
+            onChangeText={setPhone}
+            placeholder="+1 (555) 123-4567"
+            placeholderTextColor="rgba(245,245,245,0.4)"
+            keyboardType="phone-pad"
+            style={styles.textInput}
+          />
+        </View>
+
+        <View style={styles.optionGroup}>
+          <ThemedText type="smallBold" style={styles.optionLabel}>
+            Notes (optional)
+          </ThemedText>
+          <TextInput
+            value={instructions}
+            onChangeText={setInstructions}
+            placeholder="Any special requests or details we should know…"
+            placeholderTextColor="rgba(245,245,245,0.4)"
+            multiline
+            numberOfLines={3}
+            style={[styles.textInput, styles.textArea]}
+          />
+        </View>
+
+        <Pressable
+          style={[
+            styles.cartButton,
+            (!canCheckout || (activeVariant && !activeVariant.availableForSale)) && styles.cartButtonDisabled,
+          ]}
+          disabled={!canCheckout || !activeVariant || !activeVariant.availableForSale}
+          onPress={willUseTemplateFit ? handleContinueToTemplateFit : handleAddToCart}>
+          {anyUploading ? (
+            <ActivityIndicator color="#000" />
+          ) : (
+            <ThemedText type="smallBold" style={styles.cartButtonText}>
+              {activeVariant && !activeVariant.availableForSale
+                ? 'Unavailable'
+                : !frontReady || !backReady
+                  ? `Upload ${needsFront && needsBack ? 'both designs' : 'your design'} to continue`
+                  : willUseTemplateFit
+                    ? 'Continue →'
+                    : 'Add to Cart'}
+            </ThemedText>
+          )}
         </Pressable>
+        {willUseTemplateFit && (
+          <ThemedText type="small" themeColor="textSecondary" style={styles.continueHint}>
+            Next, you&apos;ll fit your design onto the print template.
+          </ThemedText>
+        )}
       </ScrollView>
     </ScreenBackground>
   );
@@ -296,5 +537,35 @@ const styles = StyleSheet.create({
     color: '#000000',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+  },
+  continueHint: {
+    textAlign: 'center',
+    marginTop: Spacing.one,
+    paddingHorizontal: Spacing.four,
+  },
+  templateDownload: {
+    marginTop: Spacing.four,
+    marginHorizontal: Spacing.four,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(24, 211, 232, 0.3)',
+    borderRadius: Spacing.two,
+    paddingVertical: Spacing.two,
+  },
+  uploadRow: {
+    flexDirection: 'row',
+    gap: Spacing.three,
+  },
+  textInput: {
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.16)',
+    borderRadius: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+    color: '#f5f5f5',
+  },
+  textArea: {
+    height: 80,
+    textAlignVertical: 'top',
   },
 });
