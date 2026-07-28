@@ -4,6 +4,7 @@ import { useColorScheme } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
+import { HeaderMenuButtons } from '@/components/menu-button';
 import { AuthProvider } from '@/lib/auth-store';
 import { CartProvider } from '@/lib/cart-store';
 
@@ -25,7 +26,14 @@ export default function RootLayout() {
               <Stack.Screen name="more" options={{ presentation: 'modal', headerShown: true, title: 'More' }} />
               <Stack.Screen name="login" options={{ presentation: 'modal', headerShown: true, title: 'Log In' }} />
               <Stack.Screen name="signup" options={{ presentation: 'modal', headerShown: true, title: 'Sign Up' }} />
-              <Stack.Screen name="template-fit/[handle]" options={{ headerShown: true, title: 'Fit Your Design' }} />
+              <Stack.Screen
+                name="template-fit/[handle]"
+                options={{ headerShown: true, title: 'Fit Your Design', headerRight: () => <HeaderMenuButtons /> }}
+              />
+              <Stack.Screen
+                name="vinyl-stickers"
+                options={{ headerShown: true, title: 'Custom Vinyl Stickers', headerRight: () => <HeaderMenuButtons /> }}
+              />
             </Stack>
           </CartProvider>
         </AuthProvider>

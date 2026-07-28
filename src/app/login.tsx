@@ -1,4 +1,5 @@
 import { Link, router } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -66,9 +67,15 @@ export default function LoginScreen() {
 
         {mayNeedPasswordSetup && (
           <ThemedText type="small" style={styles.helperLink}>
-            No password set yet? Use &quot;Forgot password?&quot; on the website to set one, then come back.
+            No password set yet? Use &quot;Forgot password?&quot; below to set one, then come back.
           </ThemedText>
         )}
+
+        <Pressable onPress={() => WebBrowser.openBrowserAsync('https://www.printlaserstitch.com/forgot-password')}>
+          <ThemedText type="small" themeColor="textSecondary">
+            Forgot password?
+          </ThemedText>
+        </Pressable>
 
         <Pressable style={[styles.button, submitting && styles.buttonDisabled]} disabled={submitting} onPress={handleSubmit}>
           {submitting ? <ActivityIndicator color="#000000" /> : <ThemedText type="smallBold" style={styles.buttonText}>Log In</ThemedText>}

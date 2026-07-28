@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams, useNavigation } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -17,7 +17,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { EMPTY_UPLOAD_SLOT, pickAndUpload, UploadBox, type UploadSlot } from '@/components/template-fit/upload-box';
 import { Brand, Spacing } from '@/constants/theme';
-import { api } from '@/lib/api';
+import { useApiQuery } from '@/lib/api-cache';
 import { useCart } from '@/lib/cart-store';
 import { downloadAndShareBlankTemplate } from '@/lib/template-fit/blank-template';
 import { BLEED_IN } from '@/lib/template-fit/constants';
@@ -76,8 +76,8 @@ export default function ProductScreen() {
   const navigation = useNavigation();
   const { addItem } = useCart();
 
-  const [product, setProduct] = useState<Product | null>(null);
-  const [loadFailed, setLoadFailed] = useState(false);
+  const { data: product, isLoading, error: loadError } = useApiQuery<Product>(handle ? `/api/products/${handle}` : null);
+  const loadFailed = !isLoading && !product && !!loadError;
   const [selected, setSelected] = useState<Record<string, string>>({});
   const [frontUpload, setFrontUpload] = useState<UploadSlot>(EMPTY_UPLOAD_SLOT);
   const [backUpload, setBackUpload] = useState<UploadSlot>(EMPTY_UPLOAD_SLOT);
@@ -86,21 +86,21 @@ export default function ProductScreen() {
   const [instructions, setInstructions] = useState('');
   const [downloadingTemplate, setDownloadingTemplate] = useState(false);
 
+  // Only seed `selected` once per handle — a background revalidation
+  // shouldn't clobber options the customer has already picked.
+  const initializedHandle = useRef<string | null>(null);
   useEffect(() => {
-    api
-      .get<Product>(`/api/products/${handle}`)
-      .then((data) => {
-        setProduct(data);
-        navigation.setOptions({ title: data.title });
-        const first = data.variants[0];
-        if (first) {
-          const initial: Record<string, string> = {};
-          for (const opt of first.selectedOptions) initial[opt.name] = opt.value;
-          setSelected(initial);
-        }
-      })
-      .catch(() => setLoadFailed(true));
-  }, [handle, navigation]);
+    if (!product) return;
+    navigation.setOptions({ title: product.title });
+    if (initializedHandle.current === handle) return;
+    initializedHandle.current = handle;
+    const first = product.variants[0];
+    if (first) {
+      const initial: Record<string, string> = {};
+      for (const opt of first.selectedOptions) initial[opt.name] = opt.value;
+      setSelected(initial);
+    }
+  }, [product, navigation, handle]);
 
   const activeVariant = useMemo(() => {
     if (!product) return null;
@@ -379,15 +379,17 @@ export default function ProductScreen() {
               <UploadBox
                 label={needsBack ? 'Front design' : undefined}
                 slot={frontUpload}
-                onSelect={() => pickAndUpload(setFrontUpload)}
+                onSelect={() => pickAndUpload(setFrontUpload, { requirePreviewable: detection?.templateFitEnabled })}
                 onClear={() => setFrontUpload(EMPTY_UPLOAD_SLOT)}
+                hint={detection?.templateFitEnabled ? 'PNG · JPG' : 'PNG · JPG · SVG · PDF'}
               />
               {needsBack && (
                 <UploadBox
                   label="Back design"
                   slot={backUpload}
-                  onSelect={() => pickAndUpload(setBackUpload)}
+                  onSelect={() => pickAndUpload(setBackUpload, { requirePreviewable: detection?.templateFitEnabled })}
                   onClear={() => setBackUpload(EMPTY_UPLOAD_SLOT)}
+                  hint={detection?.templateFitEnabled ? 'PNG · JPG' : 'PNG · JPG · SVG · PDF'}
                 />
               )}
             </View>

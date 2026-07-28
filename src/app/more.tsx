@@ -27,12 +27,21 @@ export default function MoreScreen() {
       },
     },
     {
+      label: 'Custom Vinyl Stickers',
+      description: 'Design your own — shape, size, material, instant pricing',
+      icon: 'color-wand-outline',
+      action: () => {
+        router.dismiss();
+        router.push('/vinyl-stickers');
+      },
+    },
+    {
       label: 'Gallery',
       description: 'See our recent work',
       icon: 'images-outline',
       action: () => {
         router.dismiss();
-        router.push('/gallery/index');
+        router.push('/gallery');
       },
     },
     {

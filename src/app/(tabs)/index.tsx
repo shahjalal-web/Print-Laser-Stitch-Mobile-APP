@@ -1,16 +1,15 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View, type ColorValue } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { MenuButtonRow } from '@/components/menu-button';
+import { FixedTopBar } from '@/components/menu-button';
 import { ScreenBackground } from '@/components/screen-background';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, Brand, Spacing } from '@/constants/theme';
-import { api } from '@/lib/api';
+import { useApiQuery } from '@/lib/api-cache';
+import { themeForCategory } from '@/lib/category-themes';
 
 const SITE_ORIGIN = 'https://www.printlaserstitch.com';
 
@@ -18,26 +17,25 @@ type Collection = {
   id: string;
   handle: string;
   title: string;
+  description: string;
   image: { url: string; altText: string | null } | null;
   productsCount: number;
 };
 
 export default function HomeScreen() {
-  const [collections, setCollections] = useState<Collection[] | null>(null);
-  const [loadFailed, setLoadFailed] = useState(false);
-
-  useEffect(() => {
-    api
-      .get<Collection[]>('/api/collections')
-      .then(setCollections)
-      .catch(() => setLoadFailed(true));
-  }, []);
+  const { data: collections, isLoading, error } = useApiQuery<Collection[]>('/api/collections');
+  const loadFailed = !isLoading && !collections && !!error;
+  const insets = useSafeAreaInsets();
 
   return (
     <ScreenBackground style={styles.flex}>
-      <ScrollView contentContainerStyle={{ paddingBottom: BottomTabInset + Spacing.four }}>
-        <SafeAreaView edges={['top']} style={styles.flex}>
-          <MenuButtonRow />
+      <FixedTopBar />
+      <ScrollView
+        contentContainerStyle={{
+          paddingTop: insets.top + Spacing.six,
+          paddingBottom: BottomTabInset + Spacing.four,
+        }}>
+        <>
           {/* Hero */}
           <View style={styles.hero}>
             <Badge text="We print · We engrave · We stitch" />
@@ -63,12 +61,21 @@ export default function HomeScreen() {
           </View>
 
           {/* Custom Sticker Builder banner */}
-          <Pressable style={styles.section} onPress={() => router.push('/shop')}>
+          <Pressable style={styles.section} onPress={() => router.push('/vinyl-stickers')}>
             <View style={styles.stickerBanner}>
+              <LinearGradient
+                colors={['#ffb366', '#ffb366', '#ff8c1a', '#ff8c1a']}
+                locations={[0, 0.35, 0.4, 1]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0.9 }}
+                style={StyleSheet.absoluteFill}
+              />
               <View style={styles.stickerBannerText}>
-                <ThemedText type="smallBold" style={styles.stickerBannerKicker}>
-                  Design it yourself
-                </ThemedText>
+                <View style={styles.stickerBannerBadge}>
+                  <ThemedText type="small" style={styles.stickerBannerKicker}>
+                    DESIGN IT YOURSELF
+                  </ThemedText>
+                </View>
                 <ThemedText type="subtitle" style={styles.stickerBannerTitle}>
                   Custom Vinyl Stickers
                 </ThemedText>
@@ -82,11 +89,13 @@ export default function HomeScreen() {
                   </ThemedText>
                 </View>
               </View>
-              <Image
-                source={{ uri: `${SITE_ORIGIN}/vinyl-sticker-logo.png` }}
-                style={styles.stickerBannerImage}
-                contentFit="cover"
-              />
+              <View style={styles.stickerBannerImageWrap}>
+                <Image
+                  source={{ uri: `${SITE_ORIGIN}/vinyl-sticker-logo.png` }}
+                  style={styles.stickerBannerImage}
+                  contentFit="cover"
+                />
+              </View>
             </View>
           </Pressable>
 
@@ -95,6 +104,11 @@ export default function HomeScreen() {
             <Badge text="Make your selection" center />
             <ThemedText type="subtitle" style={styles.sectionTitle}>
               What can we make for you?
+            </ThemedText>
+            <ThemedText themeColor="textSecondary" style={styles.categoryIntro}>
+              {collections
+                ? `${collections.length} categories — pick one to see every product inside.`
+                : 'Browse our full range of custom print, engraving and apparel products.'}
             </ThemedText>
 
             {!collections && !loadFailed && (
@@ -107,21 +121,41 @@ export default function HomeScreen() {
             )}
 
             <View style={styles.categoryGrid}>
-              {collections?.map((c) => (
-                <Pressable
-                  key={c.id}
-                  style={styles.categoryCard}
-                  onPress={() => router.push({ pathname: '/shop/[handle]', params: { handle: c.handle } })}>
-                  <ThemedView type="backgroundElement" style={styles.categoryImageWrap}>
+              {collections?.map((c, i) => {
+                const theme = themeForCategory(c.handle, i);
+                return (
+                  <Pressable
+                    key={c.id}
+                    style={styles.categoryCard}
+                    onPress={() => router.push({ pathname: '/shop/[handle]', params: { handle: c.handle } })}>
+                    <LinearGradient
+                      colors={[theme.base, theme.base, theme.diagonal, theme.diagonal]}
+                      locations={[0, 0.35, 0.4, 1]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0.9 }}
+                      style={StyleSheet.absoluteFill}
+                    />
+                    <View style={styles.categoryText}>
+                      <ThemedText type="smallBold" numberOfLines={2} style={{ color: theme.heading }}>
+                        {c.title}
+                      </ThemedText>
+                      {!!c.description && (
+                        <ThemedText type="small" numberOfLines={2} style={{ color: theme.desc }}>
+                          {c.description}
+                        </ThemedText>
+                      )}
+                      <View style={styles.shopNowPill}>
+                        <ThemedText type="small" style={styles.shopNowText}>
+                          Shop Now
+                        </ThemedText>
+                      </View>
+                    </View>
                     {c.image && (
-                      <Image source={{ uri: c.image.url }} style={styles.categoryImage} contentFit="cover" />
+                      <Image source={{ uri: c.image.url }} style={styles.categoryImage} contentFit="contain" />
                     )}
-                  </ThemedView>
-                  <ThemedText type="smallBold" numberOfLines={1} style={styles.categoryTitle}>
-                    {c.title}
-                  </ThemedText>
-                </Pressable>
-              ))}
+                  </Pressable>
+                );
+              })}
             </View>
           </View>
 
@@ -158,7 +192,7 @@ export default function HomeScreen() {
               <PromiseItem num="04" title="Florida print shop" text="Locally run and operated in Martin County, FL." color={Brand.yellow} />
             </View>
           </View>
-        </SafeAreaView>
+        </>
       </ScrollView>
     </ScreenBackground>
   );
@@ -291,16 +325,26 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     borderRadius: Spacing.four,
     overflow: 'hidden',
-    backgroundColor: '#ffb366',
+    minHeight: 160,
   },
   stickerBannerText: {
     flex: 1.2,
     padding: Spacing.four,
     gap: Spacing.one,
   },
+  stickerBannerBadge: {
+    alignSelf: 'flex-start',
+    borderRadius: Spacing.five,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.12)',
+    backgroundColor: 'rgba(255,255,255,0.4)',
+    paddingHorizontal: Spacing.two,
+    paddingVertical: 3,
+    marginBottom: 2,
+  },
   stickerBannerKicker: {
     color: '#8a3e00',
-    fontSize: 11,
+    fontSize: 10,
     letterSpacing: 1,
   },
   stickerBannerTitle: {
@@ -323,29 +367,51 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 12,
   },
+  stickerBannerImageWrap: {
+    flex: 1,
+    padding: Spacing.two,
+  },
   stickerBannerImage: {
     flex: 1,
+    borderRadius: Spacing.three,
+  },
+  categoryIntro: {
+    textAlign: 'center',
+    marginTop: -Spacing.two,
+    marginBottom: Spacing.one,
   },
   categoryGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: Spacing.three,
   },
   categoryCard: {
-    width: '47%',
-    gap: Spacing.one,
-  },
-  categoryImageWrap: {
-    aspectRatio: 1,
-    borderRadius: Spacing.three,
+    flexDirection: 'row',
+    minHeight: 140,
+    borderRadius: Spacing.four,
     overflow: 'hidden',
   },
-  categoryImage: {
-    width: '100%',
-    height: '100%',
+  categoryText: {
+    flex: 1.2,
+    padding: Spacing.three,
+    justifyContent: 'center',
+    gap: 4,
   },
-  categoryTitle: {
-    textAlign: 'center',
+  categoryImage: {
+    flex: 1,
+    margin: Spacing.two,
+  },
+  shopNowPill: {
+    marginTop: Spacing.one,
+    alignSelf: 'flex-start',
+    borderRadius: Spacing.five,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    paddingHorizontal: Spacing.three,
+    paddingVertical: 4,
+  },
+  shopNowText: {
+    color: '#ffffff',
+    fontSize: 11,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   vehicleBanner: {
     borderRadius: Spacing.four,

@@ -1,7 +1,7 @@
 import { Stack } from 'expo-router';
 import { useColorScheme } from 'react-native';
 
-import { MenuButton } from '@/components/menu-button';
+import { HeaderMenuButtons } from '@/components/menu-button';
 import { Colors } from '@/constants/theme';
 
 export default function AccountLayout() {
@@ -14,8 +14,9 @@ export default function AccountLayout() {
         headerStyle: { backgroundColor: colors.background },
         headerTintColor: colors.text,
         headerShadowVisible: false,
+        headerRight: () => <HeaderMenuButtons />,
       }}>
-      <Stack.Screen name="index" options={{ title: 'Account', headerRight: () => <MenuButton /> }} />
+      <Stack.Screen name="index" options={{ title: 'Account' }} />
       <Stack.Screen name="orders" options={{ title: 'Orders' }} />
       <Stack.Screen name="qr-codes" options={{ headerShown: false }} />
       <Stack.Screen name="edit-profile" options={{ title: 'Edit Profile' }} />

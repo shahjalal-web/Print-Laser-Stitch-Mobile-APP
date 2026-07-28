@@ -2,9 +2,9 @@ import { Image } from 'expo-image';
 import * as WebBrowser from 'expo-web-browser';
 import { useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { MenuButtonRow } from '@/components/menu-button';
+import { FixedTopBar } from '@/components/menu-button';
 import { ScreenBackground } from '@/components/screen-background';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -16,6 +16,7 @@ export default function CartScreen() {
   const { items, itemCount, total, updateQty, removeItem, isHydrated } = useCart();
   const [email, setEmail] = useState('');
   const [checkingOut, setCheckingOut] = useState(false);
+  const insets = useSafeAreaInsets();
 
   async function handleCheckout() {
     const trimmed = email.trim().toLowerCase();
@@ -41,6 +42,7 @@ export default function CartScreen() {
   if (!isHydrated) {
     return (
       <ScreenBackground style={styles.centerFlex}>
+        <FixedTopBar />
         <ActivityIndicator />
       </ScreenBackground>
     );
@@ -49,6 +51,7 @@ export default function CartScreen() {
   if (items.length === 0) {
     return (
       <ScreenBackground style={styles.centerFlex}>
+        <FixedTopBar />
         <ThemedText type="subtitle">Your cart is empty</ThemedText>
         <ThemedText themeColor="textSecondary" style={styles.centerText}>
           Browse the shop and add something to get started.
@@ -59,9 +62,9 @@ export default function CartScreen() {
 
   return (
     <ScreenBackground style={styles.flex}>
-      <SafeAreaView edges={['top', 'bottom']} style={styles.flex}>
-        <MenuButtonRow />
-        <ScrollView contentContainerStyle={styles.list}>
+      <FixedTopBar />
+      <SafeAreaView edges={['bottom']} style={styles.flex}>
+        <ScrollView contentContainerStyle={[styles.list, { paddingTop: insets.top + Spacing.six }]}>
           {items.map((item) => (
             <View key={item.id} style={styles.row}>
               <ThemedView type="backgroundElement" style={styles.thumbWrap}>

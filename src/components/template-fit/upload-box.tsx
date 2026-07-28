@@ -1,10 +1,16 @@
 import { Image } from 'expo-image';
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Brand, Spacing } from '@/constants/theme';
-import { pickDesignImage, uploadDesignImage, type PickedDesign } from '@/lib/template-fit/upload';
+import {
+  isPreviewIncompatible,
+  pickDesignFile,
+  takeDesignPhoto,
+  uploadDesignImage,
+  type PickedDesign,
+} from '@/lib/template-fit/upload';
 
 export type UploadSlot = {
   file: PickedDesign | null;
@@ -15,9 +21,7 @@ export type UploadSlot = {
 
 export const EMPTY_UPLOAD_SLOT: UploadSlot = { file: null, fileUrl: null, isUploading: false, error: null };
 
-export async function pickAndUpload(set: (slot: UploadSlot) => void) {
-  const picked = await pickDesignImage();
-  if (!picked) return;
+async function runUpload(picked: PickedDesign, set: (slot: UploadSlot) => void) {
   set({ file: picked, fileUrl: null, isUploading: true, error: null });
   try {
     const url = await uploadDesignImage(picked);
@@ -32,18 +36,56 @@ export async function pickAndUpload(set: (slot: UploadSlot) => void) {
   }
 }
 
+/** Opens a Take Photo / Choose File chooser, then uploads the result.
+ * `requirePreviewable`: reject PDF/SVG for products that need the Fit
+ * Studio's visual positioning board (which can't preview those formats) —
+ * mirrors the website's requirePreviewable gate in UploadBox.tsx. */
+export function pickAndUpload(set: (slot: UploadSlot) => void, opts?: { requirePreviewable?: boolean }) {
+  Alert.alert('Upload your design', undefined, [
+    {
+      text: 'Take Photo',
+      onPress: async () => {
+        const picked = await takeDesignPhoto();
+        if (picked) void runUpload(picked, set);
+      },
+    },
+    {
+      text: 'Choose File',
+      onPress: async () => {
+        const picked = await pickDesignFile();
+        if (!picked) return;
+        if (opts?.requirePreviewable && isPreviewIncompatible(picked.mimeType)) {
+          set({
+            file: picked,
+            fileUrl: null,
+            isUploading: false,
+            error:
+              "This product uses a visual positioning tool that can't preview PDF/SVG files — please upload a PNG or JPG instead.",
+          });
+          return;
+        }
+        void runUpload(picked, set);
+      },
+    },
+    { text: 'Cancel', style: 'cancel' },
+  ]);
+}
+
 export function UploadBox({
   label,
   slot,
   onSelect,
   onClear,
+  hint = 'PNG · JPG · SVG · PDF',
 }: {
   label?: string;
   slot: UploadSlot;
   onSelect: () => void;
   onClear: () => void;
+  hint?: string;
 }) {
   const [pressed, setPressed] = useState(false);
+  const isImage = slot.file ? !isPreviewIncompatible(slot.file.mimeType) : false;
 
   return (
     <View style={styles.wrap}>
@@ -66,7 +108,18 @@ export function UploadBox({
           </View>
         ) : slot.fileUrl && slot.file ? (
           <View style={styles.previewWrap}>
-            <Image source={{ uri: slot.file.uri }} style={styles.previewImage} contentFit="cover" />
+            {isImage ? (
+              <Image source={{ uri: slot.file.uri }} style={styles.previewImage} contentFit="cover" />
+            ) : (
+              <View style={styles.center}>
+                <ThemedText type="title" style={styles.fileIcon}>
+                  📄
+                </ThemedText>
+                <ThemedText type="small" numberOfLines={2} style={styles.hint}>
+                  {slot.file.name}
+                </ThemedText>
+              </View>
+            )}
             <Pressable
               style={styles.clearButton}
               onPress={(e) => {
@@ -83,7 +136,7 @@ export function UploadBox({
           <View style={styles.center}>
             <ThemedText type="smallBold">⬆ Upload design</ThemedText>
             <ThemedText type="small" themeColor="textSecondary" style={styles.hint}>
-              PNG or JPG
+              {hint}
             </ThemedText>
           </View>
         )}
@@ -113,6 +166,7 @@ const styles = StyleSheet.create({
   boxError: { borderColor: Brand.magenta },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 4, padding: Spacing.two },
   hint: { textAlign: 'center' },
+  fileIcon: { fontSize: 32 },
   previewWrap: { flex: 1 },
   previewImage: { flex: 1, width: '100%', height: '100%' },
   clearButton: {

@@ -1,6 +1,5 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -8,7 +7,7 @@ import { ScreenBackground } from '@/components/screen-background';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
-import { api } from '@/lib/api';
+import { useApiQuery } from '@/lib/api-cache';
 
 type Collection = {
   id: string;
@@ -19,17 +18,10 @@ type Collection = {
 };
 
 export default function ShopScreen() {
-  const [collections, setCollections] = useState<Collection[] | null>(null);
-  const [loadFailed, setLoadFailed] = useState(false);
+  const { data: collections, isLoading, error } = useApiQuery<Collection[]>('/api/collections');
+  const loadFailed = !isLoading && !collections && !!error;
 
-  useEffect(() => {
-    api
-      .get<Collection[]>('/api/collections')
-      .then(setCollections)
-      .catch(() => setLoadFailed(true));
-  }, []);
-
-  if (!collections && !loadFailed) {
+  if (isLoading) {
     return (
       <ScreenBackground style={styles.centerFlex}>
         <ActivityIndicator />

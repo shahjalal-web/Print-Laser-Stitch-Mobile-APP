@@ -37,7 +37,24 @@ export interface VehicleStickerCartItem extends CartItemBase {
   partLabel: string;
 }
 
-export type CartItem = ProductCartItem | VehicleStickerCartItem;
+export interface VinylStickerCartItem extends CartItemBase {
+  kind: 'vinyl-sticker';
+  shape: string;
+  material: string;
+  size: string;
+  customWidth?: number;
+  customHeight?: number;
+  roundedCorners: boolean | null;
+  /** Snapped tier (50, 100, 250…) used for pricing. */
+  tierQty: number;
+  perUnit: number;
+  fileUrl?: string;
+  fileName?: string;
+  instructions?: string;
+  editHref: string;
+}
+
+export type CartItem = ProductCartItem | VehicleStickerCartItem | VinylStickerCartItem;
 
 type DistributiveOmit<T, K extends keyof any> = T extends T ? Omit<T, K> : never;
 export type NewCartItem = DistributiveOmit<CartItem, 'id' | 'addedAt'> &

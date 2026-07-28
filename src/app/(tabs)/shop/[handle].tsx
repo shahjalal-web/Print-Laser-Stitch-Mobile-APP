@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams, useNavigation } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -8,7 +8,7 @@ import { ScreenBackground } from '@/components/screen-background';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
-import { api } from '@/lib/api';
+import { useApiQuery } from '@/lib/api-cache';
 
 type CollectionProduct = {
   id: string;
@@ -30,20 +30,14 @@ type CollectionDetail = {
 export default function CategoryScreen() {
   const { handle } = useLocalSearchParams<{ handle: string }>();
   const navigation = useNavigation();
-  const [collection, setCollection] = useState<CollectionDetail | null>(null);
-  const [loadFailed, setLoadFailed] = useState(false);
+  const { data: collection, isLoading, error } = useApiQuery<CollectionDetail>(handle ? `/api/collections/${handle}` : null);
+  const loadFailed = !isLoading && !collection && !!error;
 
   useEffect(() => {
-    api
-      .get<CollectionDetail>(`/api/collections/${handle}`)
-      .then((data) => {
-        setCollection(data);
-        navigation.setOptions({ title: data.title });
-      })
-      .catch(() => setLoadFailed(true));
-  }, [handle, navigation]);
+    if (collection) navigation.setOptions({ title: collection.title });
+  }, [collection, navigation]);
 
-  if (!collection && !loadFailed) {
+  if (isLoading) {
     return (
       <ScreenBackground style={styles.centerFlex}>
         <ActivityIndicator />
