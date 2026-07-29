@@ -1,14 +1,14 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ScreenBackground } from '@/components/screen-background';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Brand, Spacing } from '@/constants/theme';
-import { api } from '@/lib/api';
+import { useApiQuery } from '@/lib/api-cache';
 
 type PartKey = 'hoodSet' | 'bedside' | 'fullSet' | 'top';
 
@@ -29,17 +29,16 @@ export type VehicleSticker = {
 };
 
 export default function VehicleStickersScreen() {
-  const [vehicles, setVehicles] = useState<VehicleSticker[] | null>(null);
-  const [loadFailed, setLoadFailed] = useState(false);
+  const {
+    data: vehicles,
+    isLoading,
+    isRefreshing,
+    error,
+    refetch,
+  } = useApiQuery<VehicleSticker[]>('/api/admin/vehicles');
+  const loadFailed = !isLoading && !vehicles && !!error;
   const [search, setSearch] = useState('');
   const [make, setMake] = useState('');
-
-  useEffect(() => {
-    api
-      .get<VehicleSticker[]>('/api/admin/vehicles')
-      .then(setVehicles)
-      .catch(() => setLoadFailed(true));
-  }, []);
 
   const makes = useMemo(() => [...new Set((vehicles ?? []).map((v) => v.make))].sort(), [vehicles]);
 
@@ -52,7 +51,7 @@ export default function VehicleStickersScreen() {
     });
   }, [vehicles, make, search]);
 
-  if (!vehicles && !loadFailed) {
+  if (isLoading) {
     return (
       <ScreenBackground style={styles.centerFlex}>
         <ActivityIndicator />
@@ -63,7 +62,7 @@ export default function VehicleStickersScreen() {
   if (loadFailed) {
     return (
       <ScreenBackground style={styles.centerFlex}>
-        <ThemedText themeColor="textSecondary">Couldn&apos;t load vehicles right now.</ThemedText>
+        <ThemedText themeColor="textSecondary">Couldn&apos;t load vehicles right now. Pull down to try again.</ThemedText>
       </ScreenBackground>
     );
   }
@@ -106,6 +105,7 @@ export default function VehicleStickersScreen() {
           numColumns={2}
           columnWrapperStyle={styles.row}
           contentContainerStyle={styles.list}
+          refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={refetch} tintColor={Brand.cyan} />}
           ListEmptyComponent={
             <ThemedText themeColor="textSecondary" style={styles.centerText}>
               No vehicles found.

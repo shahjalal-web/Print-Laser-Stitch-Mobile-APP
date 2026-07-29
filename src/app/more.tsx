@@ -66,13 +66,25 @@ export default function MoreScreen() {
       label: 'Quick Quote Calculator',
       description: 'Multi-panel + material pricing',
       icon: 'calculator-outline',
-      action: () => WebBrowser.openBrowserAsync(`${SITE_ORIGIN}/decal-quote`),
+      action: () => {
+        router.dismiss();
+        router.push('/decal-quote');
+      },
     },
     {
       label: 'Decal Signage Calculator',
       description: 'Print, design & install pricing',
       icon: 'construct-outline',
-      action: () => WebBrowser.openBrowserAsync(`${SITE_ORIGIN}/signage-quotes`),
+      action: () => {
+        router.dismiss();
+        router.push('/signage-quotes');
+      },
+    },
+    {
+      label: 'Print Laser Stitch University',
+      description: 'Tutorials, walkthroughs and courses',
+      icon: 'school-outline',
+      action: () => WebBrowser.openBrowserAsync('https://printlaserstitchuniversity.com/'),
     },
     {
       label: 'Blog',

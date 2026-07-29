@@ -1,7 +1,8 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View, type ColorValue } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, View, type ColorValue } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { FixedTopBar } from '@/components/menu-button';
@@ -23,7 +24,7 @@ type Collection = {
 };
 
 export default function HomeScreen() {
-  const { data: collections, isLoading, error } = useApiQuery<Collection[]>('/api/collections');
+  const { data: collections, isLoading, isRefreshing, error, refetch } = useApiQuery<Collection[]>('/api/collections');
   const loadFailed = !isLoading && !collections && !!error;
   const insets = useSafeAreaInsets();
 
@@ -31,6 +32,7 @@ export default function HomeScreen() {
     <ScreenBackground style={styles.flex}>
       <FixedTopBar />
       <ScrollView
+        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={refetch} tintColor={Brand.yellow} />}
         contentContainerStyle={{
           paddingTop: insets.top + Spacing.six,
           paddingBottom: BottomTabInset + Spacing.four,
@@ -40,7 +42,7 @@ export default function HomeScreen() {
           <View style={styles.hero}>
             <Badge text="We print · We engrave · We stitch" />
             <ThemedText type="title" style={styles.heroTitle}>
-              Bringing your <ThemedText type="title" style={{ color: Brand.yellow }}>vision</ThemedText> to life.
+              Bringing your <ThemedText style={[styles.heroTitle, { color: Brand.yellow }]}>vision</ThemedText> to life.
             </ThemedText>
             <ThemedText themeColor="textSecondary" style={styles.heroSubtitle}>
               Premium custom printing, laser engraving and stitching — built for businesses, creators and car
@@ -70,31 +72,27 @@ export default function HomeScreen() {
                 end={{ x: 1, y: 0.9 }}
                 style={StyleSheet.absoluteFill}
               />
-              <View style={styles.stickerBannerText}>
-                <View style={styles.stickerBannerBadge}>
-                  <ThemedText type="small" style={styles.stickerBannerKicker}>
-                    DESIGN IT YOURSELF
-                  </ThemedText>
-                </View>
-                <ThemedText type="subtitle" style={styles.stickerBannerTitle}>
-                  Custom Vinyl Stickers
+              <View style={styles.stickerBannerBadge}>
+                <ThemedText type="small" style={styles.stickerBannerKicker}>
+                  DESIGN IT YOURSELF
                 </ThemedText>
-                <ThemedText style={styles.stickerBannerBody}>
-                  Upload your artwork, pick a shape, size and finish, then see an instant proof — before you ever
-                  check out.
-                </ThemedText>
-                <View style={styles.stickerBannerCta}>
-                  <ThemedText type="smallBold" style={styles.stickerBannerCtaText}>
-                    Start Designing →
-                  </ThemedText>
-                </View>
               </View>
-              <View style={styles.stickerBannerImageWrap}>
-                <Image
-                  source={{ uri: `${SITE_ORIGIN}/vinyl-sticker-logo.png` }}
-                  style={styles.stickerBannerImage}
-                  contentFit="cover"
-                />
+              <ThemedText type="subtitle" style={styles.stickerBannerTitle}>
+                Custom Vinyl Stickers
+              </ThemedText>
+              <ThemedText style={styles.stickerBannerBody} numberOfLines={2}>
+                Upload your artwork, pick a shape, size and finish, then see an instant proof — before you ever
+                check out.
+              </ThemedText>
+              <Image
+                source={{ uri: `${SITE_ORIGIN}/vinyl-sticker-logo.png` }}
+                style={styles.stickerBannerImage}
+                contentFit="cover"
+              />
+              <View style={styles.stickerBannerCta}>
+                <ThemedText type="smallBold" style={styles.stickerBannerCtaText}>
+                  Start Designing →
+                </ThemedText>
               </View>
             </View>
           </Pressable>
@@ -150,8 +148,12 @@ export default function HomeScreen() {
                         </ThemedText>
                       </View>
                     </View>
-                    {c.image && (
+                    {c.image?.url ? (
                       <Image source={{ uri: c.image.url }} style={styles.categoryImage} contentFit="contain" />
+                    ) : (
+                      <View style={styles.categoryImageFallback}>
+                        <ThemedText style={styles.categoryImageFallbackEmoji}>🗂️</ThemedText>
+                      </View>
                     )}
                   </Pressable>
                 );
@@ -178,6 +180,63 @@ export default function HomeScreen() {
               <View style={[styles.stickerBannerCta, { backgroundColor: Brand.cyan }]}>
                 <ThemedText type="smallBold" style={styles.stickerBannerCtaText}>
                   Find Your Vehicle →
+                </ThemedText>
+              </View>
+            </View>
+          </Pressable>
+
+          {/* Quick Quote Calculator banner */}
+          <Pressable style={styles.section} onPress={() => router.push('/decal-quote')}>
+            <View style={styles.vehicleBanner}>
+              <Badge text="Window film · Wall vinyl" />
+              <ThemedText type="subtitle" style={styles.vehicleBannerTitle}>
+                Quick Quote Calculator
+              </ThemedText>
+              <ThemedText themeColor="textSecondary" style={styles.vehicleBannerBody}>
+                Add panels for doors, windows, walls, wood or metal — pick a vinyl material and get instant pricing
+                with 7% Martin County tax included.
+              </ThemedText>
+              <View style={[styles.stickerBannerCta, { backgroundColor: Brand.cyan }]}>
+                <ThemedText type="smallBold" style={styles.stickerBannerCtaText}>
+                  Open Quick Quote →
+                </ThemedText>
+              </View>
+            </View>
+          </Pressable>
+
+          {/* Decal Signage Calculator banner */}
+          <Pressable style={styles.section} onPress={() => router.push('/signage-quotes')}>
+            <View style={[styles.vehicleBanner, { borderColor: 'rgba(217, 240, 0, 0.3)' }]}>
+              <Badge text="Print & install quote generator" />
+              <ThemedText type="subtitle" style={styles.vehicleBannerTitle}>
+                Decal Signage Calculator
+              </ThemedText>
+              <ThemedText themeColor="textSecondary" style={styles.vehicleBannerBody}>
+                Enter width and length, pick a service tier (Print Only, Design &amp; Print, or Full Install), and
+                get an instant quote.
+              </ThemedText>
+              <View style={styles.stickerBannerCta}>
+                <ThemedText type="smallBold" style={styles.stickerBannerCtaText}>
+                  Open Calculator →
+                </ThemedText>
+              </View>
+            </View>
+          </Pressable>
+
+          {/* Print Laser Stitch University banner */}
+          <Pressable style={styles.section} onPress={() => WebBrowser.openBrowserAsync('https://printlaserstitchuniversity.com/')}>
+            <View style={[styles.vehicleBanner, { borderColor: 'rgba(217, 76, 179, 0.3)' }]}>
+              <Badge text="Learn the craft" />
+              <ThemedText type="subtitle" style={styles.vehicleBannerTitle}>
+                Print Laser Stitch University
+              </ThemedText>
+              <ThemedText themeColor="textSecondary" style={styles.vehicleBannerBody}>
+                Want to sharpen your design and print skills? Step into our learning hub for tutorials, walkthroughs
+                and courses from the Print Laser Stitch team.
+              </ThemedText>
+              <View style={[styles.stickerBannerCta, { backgroundColor: Brand.magenta }]}>
+                <ThemedText type="smallBold" style={styles.stickerBannerCtaText}>
+                  Visit the University →
                 </ThemedText>
               </View>
             </View>
@@ -322,13 +381,8 @@ const styles = StyleSheet.create({
     color: Brand.cyan,
   },
   stickerBanner: {
-    flexDirection: 'row',
     borderRadius: Spacing.four,
     overflow: 'hidden',
-    minHeight: 160,
-  },
-  stickerBannerText: {
-    flex: 1.2,
     padding: Spacing.four,
     gap: Spacing.one,
   },
@@ -355,6 +409,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
   },
+  stickerBannerImage: {
+    width: '100%',
+    aspectRatio: 16 / 9,
+    borderRadius: Spacing.three,
+    marginTop: Spacing.one,
+  },
   stickerBannerCta: {
     marginTop: Spacing.two,
     alignSelf: 'flex-start',
@@ -366,14 +426,6 @@ const styles = StyleSheet.create({
   stickerBannerCtaText: {
     color: '#ffffff',
     fontSize: 12,
-  },
-  stickerBannerImageWrap: {
-    flex: 1,
-    padding: Spacing.two,
-  },
-  stickerBannerImage: {
-    flex: 1,
-    borderRadius: Spacing.three,
   },
   categoryIntro: {
     textAlign: 'center',
@@ -398,6 +450,15 @@ const styles = StyleSheet.create({
   categoryImage: {
     flex: 1,
     margin: Spacing.two,
+  },
+  categoryImageFallback: {
+    flex: 1,
+    margin: Spacing.two,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  categoryImageFallbackEmoji: {
+    fontSize: 44,
   },
   shopNowPill: {
     marginTop: Spacing.one,

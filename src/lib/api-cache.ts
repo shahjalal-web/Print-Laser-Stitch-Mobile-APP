@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { api } from '@/lib/api';
 
@@ -21,7 +21,14 @@ type QueryState<T> = {
   data: T | undefined;
   /** True only on a hard miss (no cached value to show while fetching). */
   isLoading: boolean;
+  /** True while a manual pull-to-refresh is in flight — drives
+   * RefreshControl's `refreshing` prop. */
+  isRefreshing: boolean;
   error: unknown;
+  /** Force a fresh fetch right now (pull-to-refresh), bypassing nothing —
+   * there's no time-based staleness in this cache, so this is the only way
+   * to guarantee the very latest data (e.g. right after an admin edit). */
+  refetch: () => Promise<void>;
 };
 
 /** Stale-while-revalidate GET. Returns cached data instantly (if any) with
@@ -31,6 +38,7 @@ export function useApiQuery<T>(path: string | null): QueryState<T> {
   const cached = path ? getCachedApi<T>(path) : undefined;
   const [data, setData] = useState<T | undefined>(cached);
   const [isLoading, setIsLoading] = useState(path != null && cached === undefined);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const lastPath = useRef(path);
 
@@ -71,5 +79,20 @@ export function useApiQuery<T>(path: string | null): QueryState<T> {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [path]);
 
-  return { data, isLoading, error };
+  const refetch = useCallback(async () => {
+    if (!path) return;
+    setIsRefreshing(true);
+    try {
+      const fresh = await api.get<T>(path);
+      cache.set(path, fresh);
+      setData(fresh);
+      setError(null);
+    } catch (err) {
+      if (getCachedApi<T>(path) === undefined) setError(err);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [path]);
+
+  return { data, isLoading, isRefreshing, error, refetch };
 }

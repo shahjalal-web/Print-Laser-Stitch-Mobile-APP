@@ -68,7 +68,11 @@ export default function CartScreen() {
           {items.map((item) => (
             <View key={item.id} style={styles.row}>
               <ThemedView type="backgroundElement" style={styles.thumbWrap}>
-                {!!item.thumbnail && <Image source={{ uri: item.thumbnail }} style={styles.thumb} contentFit="cover" />}
+                {item.thumbnail.startsWith('http') || item.thumbnail.startsWith('/') ? (
+                  <Image source={{ uri: item.thumbnail }} style={styles.thumb} contentFit="cover" />
+                ) : (
+                  !!item.thumbnail && <ThemedText style={styles.thumbEmoji}>{item.thumbnail}</ThemedText>
+                )}
               </ThemedView>
               <View style={styles.rowInfo}>
                 <ThemedText type="smallBold" numberOfLines={2}>
@@ -166,10 +170,15 @@ const styles = StyleSheet.create({
     height: 84,
     borderRadius: Spacing.two,
     overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   thumb: {
     width: '100%',
     height: '100%',
+  },
+  thumbEmoji: {
+    fontSize: 36,
   },
   rowInfo: {
     flex: 1,

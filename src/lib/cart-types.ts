@@ -16,6 +16,8 @@ export interface CartItemBase {
   unitLabel: string;
   totalPrice: number;
   quantity: number;
+  /** Optional return path so the user can edit and re-add. */
+  editHref?: string;
 }
 
 export interface ProductCartItem extends CartItemBase {
@@ -54,7 +56,60 @@ export interface VinylStickerCartItem extends CartItemBase {
   editHref: string;
 }
 
-export type CartItem = ProductCartItem | VehicleStickerCartItem | VinylStickerCartItem;
+/** Decal Signage Calculator (service-plan-based). Single rectangle × qty, one
+ * of three service tiers, optional discount. No tax, no material. */
+export interface SignageCartItem extends CartItemBase {
+  kind: 'signage';
+  /** Width in the chosen unit. */
+  width: number;
+  /** Length in the chosen unit. */
+  length: number;
+  /** Whether width/length are feet or inches. */
+  unit: 'ft' | 'in';
+  qty: number;
+  servicePlan: string;
+  servicePlanLabel: string;
+  pricePerSqFt: number;
+  unitAreaSqFt: number;
+  totalAreaSqFt: number;
+  discountPercent: number;
+  subtotal: number;
+  notes?: string;
+}
+
+export interface DecalPanelLine {
+  type: string;
+  typeLabel: string;
+  /** Width in inches. */
+  width: number;
+  /** Height in inches. */
+  height: number;
+  description?: string;
+}
+
+/** Quick Quote calculator (multi-panel + material). Material's $/sqft × total
+ * area, optional discount, 7% Martin County tax always on top. */
+export interface DecalCartItem extends CartItemBase {
+  kind: 'decal';
+  panels: DecalPanelLine[];
+  material: string;
+  materialLabel: string;
+  discountPercent: number;
+  pricePerSqFt: number;
+  totalAreaSqFt: number;
+  /** Subtotal before discount + tax. */
+  subtotal: number;
+  /** Tax amount (7% Martin County, already baked into totalPrice). */
+  taxAmount: number;
+  notes?: string;
+}
+
+export type CartItem =
+  | ProductCartItem
+  | VehicleStickerCartItem
+  | VinylStickerCartItem
+  | SignageCartItem
+  | DecalCartItem;
 
 type DistributiveOmit<T, K extends keyof any> = T extends T ? Omit<T, K> : never;
 export type NewCartItem = DistributiveOmit<CartItem, 'id' | 'addedAt'> &

@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useEffect } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ScreenBackground } from '@/components/screen-background';
@@ -30,7 +30,13 @@ type CollectionDetail = {
 export default function CategoryScreen() {
   const { handle } = useLocalSearchParams<{ handle: string }>();
   const navigation = useNavigation();
-  const { data: collection, isLoading, error } = useApiQuery<CollectionDetail>(handle ? `/api/collections/${handle}` : null);
+  const {
+    data: collection,
+    isLoading,
+    isRefreshing,
+    error,
+    refetch,
+  } = useApiQuery<CollectionDetail>(handle ? `/api/collections/${handle}` : null);
   const loadFailed = !isLoading && !collection && !!error;
 
   useEffect(() => {
@@ -62,6 +68,7 @@ export default function CategoryScreen() {
           numColumns={2}
           columnWrapperStyle={styles.row}
           contentContainerStyle={styles.list}
+          refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={refetch} />}
           ListEmptyComponent={
             <ThemedText themeColor="textSecondary" style={styles.centerText}>
               No products in this category yet.

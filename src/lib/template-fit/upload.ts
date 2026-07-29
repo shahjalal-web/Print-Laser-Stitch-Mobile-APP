@@ -74,10 +74,15 @@ type StagedTarget = {
 
 /** Three-step direct upload to Shopify Files, reusing the same
  * /api/shopify-upload/{stage,register} routes the website's UploadBox uses.
- * RN's fetch supports multipart FormData with a { uri, name, type } file
- * descriptor natively, same shape as the raw POST the browser does. */
+ * This project's global FormData is Expo's spec-compliant "winter" polyfill
+ * (ships with expo-router/entry on this SDK), not classic RN FormData — it
+ * only accepts a string or a real Blob/File part, and throws "Unsupported
+ * FormDataPart implementation" for the old RN { uri, name, type } shape. The
+ * expo-file-system File class implements Blob, so pass it directly, same as
+ * the browser passes a real File on the website's UploadBox. */
 export async function uploadDesignImage(file: PickedDesign): Promise<string> {
-  const fileSizeBytes = new File(file.uri).size ?? 0;
+  const fileHandle = new File(file.uri);
+  const fileSizeBytes = fileHandle.size ?? 0;
 
   const staged = await api.post<StagedTarget>('/api/shopify-upload/stage', {
     filename: file.name,
@@ -87,7 +92,7 @@ export async function uploadDesignImage(file: PickedDesign): Promise<string> {
 
   const fd = new FormData();
   for (const param of staged.parameters) fd.append(param.name, param.value);
-  fd.append('file', { uri: file.uri, name: file.name, type: file.mimeType } as unknown as Blob);
+  fd.append('file', fileHandle, file.name);
 
   const uploadResp = await fetch(staged.url, { method: 'POST', body: fd });
   if (!uploadResp.ok) {

@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ScreenBackground } from '@/components/screen-background';
@@ -18,7 +18,7 @@ type Collection = {
 };
 
 export default function ShopScreen() {
-  const { data: collections, isLoading, error } = useApiQuery<Collection[]>('/api/collections');
+  const { data: collections, isLoading, isRefreshing, error, refetch } = useApiQuery<Collection[]>('/api/collections');
   const loadFailed = !isLoading && !collections && !!error;
 
   if (isLoading) {
@@ -46,6 +46,7 @@ export default function ShopScreen() {
           numColumns={2}
           columnWrapperStyle={styles.row}
           contentContainerStyle={styles.list}
+          refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={refetch} />}
           renderItem={({ item }) => (
             <Pressable
               style={styles.card}

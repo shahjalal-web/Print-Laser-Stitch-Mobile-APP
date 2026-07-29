@@ -6,6 +6,7 @@ import {
   Alert,
   Dimensions,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   TextInput,
@@ -76,7 +77,13 @@ export default function ProductScreen() {
   const navigation = useNavigation();
   const { addItem } = useCart();
 
-  const { data: product, isLoading, error: loadError } = useApiQuery<Product>(handle ? `/api/products/${handle}` : null);
+  const {
+    data: product,
+    isLoading,
+    isRefreshing,
+    error: loadError,
+    refetch,
+  } = useApiQuery<Product>(handle ? `/api/products/${handle}` : null);
   const loadFailed = !isLoading && !product && !!loadError;
   const [selected, setSelected] = useState<Record<string, string>>({});
   const [frontUpload, setFrontUpload] = useState<UploadSlot>(EMPTY_UPLOAD_SLOT);
@@ -277,7 +284,9 @@ export default function ProductScreen() {
 
   return (
     <ScreenBackground style={styles.flex}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={refetch} />}>
         {images.length > 0 && (
           <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false} style={styles.gallery}>
             {images.map((url) => (

@@ -143,7 +143,7 @@ export default function VinylStickersScreen() {
             DESIGN IT YOURSELF
           </ThemedText>
           <ThemedText type="title" style={styles.heroTitle}>
-            Custom <ThemedText type="title" style={{ color: Brand.yellow }}>Vinyl Stickers</ThemedText>
+            Custom <ThemedText style={[styles.heroTitle, { color: Brand.yellow }]}>Vinyl Stickers</ThemedText>
           </ThemedText>
           <ThemedText themeColor="textSecondary" style={styles.heroBody}>
             Turn your artwork into tough, weatherproof stickers — cut to the exact shape of your design and built to
@@ -456,7 +456,7 @@ const styles = StyleSheet.create({
     borderRadius: Spacing.four,
     borderWidth: 1,
     borderColor: 'rgba(217, 240, 0, 0.25)',
-    backgroundColor: 'rgba(217, 240, 0, 0.05)',
+    backgroundColor: 'rgba(5, 5, 5, 0.85)',
     padding: Spacing.four,
     gap: Spacing.two,
   },
@@ -475,7 +475,7 @@ const styles = StyleSheet.create({
     borderRadius: Spacing.three,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.08)',
-    backgroundColor: 'rgba(255,255,255,0.03)',
+    backgroundColor: 'rgba(18,18,18,0.88)',
     padding: Spacing.four,
     gap: Spacing.three,
   },
