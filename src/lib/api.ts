@@ -16,15 +16,35 @@ export class ApiError extends Error {
   }
 }
 
+/** Backend calls have occasionally hung for 20s+ (Shopify Admin API
+ * slowness, not just a cold start) — without this, a stuck request leaves
+ * screens spinning forever with no way to recover short of force-quitting
+ * the app. Abort and surface a clear, retryable error instead. */
+const REQUEST_TIMEOUT_MS = 15000;
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const res = await fetch(`${API_BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-      ...options.headers,
-    },
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE_URL}${path}`, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        ...options.headers,
+      },
+      signal: controller.signal,
+    });
+  } catch (err) {
+    if (err instanceof Error && err.name === 'AbortError') {
+      throw new ApiError('This is taking too long — please check your connection and try again.', 0);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeout);
+  }
 
   const data = await res.json().catch(() => null);
 
