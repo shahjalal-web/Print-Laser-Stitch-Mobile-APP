@@ -89,8 +89,10 @@ export default function CategoryScreen() {
                 })
               }>
               <ThemedView type="backgroundElement" style={styles.imageWrap}>
-                {item.featuredImage && (
+                {item.featuredImage ? (
                   <Image source={{ uri: item.featuredImage.url }} style={styles.image} contentFit="cover" />
+                ) : (
+                  <ThemedText style={styles.imageFallback}>🗂️</ThemedText>
                 )}
               </ThemedView>
               <ThemedText type="smallBold" numberOfLines={2} style={styles.title}>
@@ -126,10 +128,15 @@ const styles = StyleSheet.create({
     aspectRatio: 1,
     borderRadius: Spacing.three,
     overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   image: {
     width: '100%',
     height: '100%',
+  },
+  imageFallback: {
+    fontSize: 40,
   },
   title: {
     marginTop: Spacing.one,

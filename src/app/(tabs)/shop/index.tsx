@@ -52,7 +52,11 @@ export default function ShopScreen() {
               style={styles.card}
               onPress={() => router.push({ pathname: '/shop/[handle]', params: { handle: item.handle } })}>
               <ThemedView type="backgroundElement" style={styles.imageWrap}>
-                {item.image && <Image source={{ uri: item.image.url }} style={styles.image} contentFit="cover" />}
+                {item.image ? (
+                  <Image source={{ uri: item.image.url }} style={styles.image} contentFit="cover" />
+                ) : (
+                  <ThemedText style={styles.imageFallback}>🗂️</ThemedText>
+                )}
               </ThemedView>
               <ThemedText type="smallBold" numberOfLines={1} style={styles.title}>
                 {item.title}
@@ -86,10 +90,15 @@ const styles = StyleSheet.create({
     aspectRatio: 1,
     borderRadius: Spacing.three,
     overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   image: {
     width: '100%',
     height: '100%',
+  },
+  imageFallback: {
+    fontSize: 40,
   },
   title: {
     marginTop: Spacing.one,
