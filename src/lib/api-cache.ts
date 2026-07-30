@@ -56,9 +56,11 @@ export function useApiQuery<T>(path: string | null): QueryState<T> {
     }
 
     let cancelled = false;
+    console.log(`[useApiQuery] GET ${path} — starting`);
     api
       .get<T>(path)
       .then((fresh) => {
+        console.log(`[useApiQuery] GET ${path} — resolved, cancelled=${cancelled}`);
         if (cancelled) return;
         cache.set(path, fresh);
         setData(fresh);
@@ -66,6 +68,7 @@ export function useApiQuery<T>(path: string | null): QueryState<T> {
         setError(null);
       })
       .catch((err) => {
+        console.log(`[useApiQuery] GET ${path} — rejected, cancelled=${cancelled}, err=${err instanceof Error ? err.message : String(err)}`);
         if (cancelled) return;
         setIsLoading(false);
         // Keep showing stale cached data on a background-refresh failure —

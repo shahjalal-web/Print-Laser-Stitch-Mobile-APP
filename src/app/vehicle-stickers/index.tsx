@@ -40,6 +40,10 @@ export default function VehicleStickersScreen() {
   const [search, setSearch] = useState('');
   const [make, setMake] = useState('');
 
+  console.log(
+    `[VehicleStickersScreen] render — isLoading=${isLoading}, hasVehicles=${!!vehicles}, count=${vehicles?.length ?? 'n/a'}, error=${error ? String(error) : 'none'}`,
+  );
+
   const makes = useMemo(() => [...new Set((vehicles ?? []).map((v) => v.make))].sort(), [vehicles]);
 
   const filtered = useMemo(() => {
