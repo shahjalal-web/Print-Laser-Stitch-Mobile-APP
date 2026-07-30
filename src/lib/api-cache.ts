@@ -105,11 +105,17 @@ export function useApiQuery<T>(path: string | null): QueryState<T> {
 
   const refetch = useCallback(async () => {
     if (!path) return;
+    console.log(`[useApiQuery] GET ${path} — refetch() called`);
     setIsRefreshing(true);
     try {
       const fresh = await api.get<T>(path);
       cache.set(path, fresh);
       setData(fresh);
+      // Whichever path actually landed fresh data, the full-page spinner
+      // must never keep showing on top of it — vehicles was observed
+      // getting data through this function while isLoading (only ever
+      // cleared by the mount effect above) stayed stuck true forever.
+      setIsLoading(false);
       setError(null);
     } catch (err) {
       if (getCachedApi<T>(path) === undefined) setError(err);
