@@ -56,11 +56,29 @@ export function useApiQuery<T>(path: string | null): QueryState<T> {
     }
 
     let cancelled = false;
-    console.log(`[useApiQuery] GET ${path} — starting`);
+    const instanceId = Math.random().toString(36).slice(2, 8);
+    console.log(`[useApiQuery:${instanceId}] GET ${path} — starting`);
+
+    // Belt-and-suspenders: api.get() already races its own fetch against a
+    // 15s timeout, but the vehicles screen has shown isLoading getting stuck
+    // even after the fetch/json-parse steps logged as complete — something
+    // downstream of that isn't reliably reaching this component's state.
+    // Whatever the exact cause, this effect must never leave isLoading stuck
+    // forever, so force it to settle on its own after a hard ceiling.
+    const hardStop = setTimeout(() => {
+      console.log(`[useApiQuery:${instanceId}] GET ${path} — hard-stop fired, forcing isLoading=false`);
+      if (cancelled) return;
+      setIsLoading(false);
+      if (getCachedApi<T>(path) === undefined) {
+        setError(new Error('Timed out waiting for a response.'));
+      }
+    }, 20000);
+
     api
       .get<T>(path)
       .then((fresh) => {
-        console.log(`[useApiQuery] GET ${path} — resolved, cancelled=${cancelled}`);
+        console.log(`[useApiQuery:${instanceId}] GET ${path} — resolved, cancelled=${cancelled}`);
+        clearTimeout(hardStop);
         if (cancelled) return;
         cache.set(path, fresh);
         setData(fresh);
@@ -68,7 +86,8 @@ export function useApiQuery<T>(path: string | null): QueryState<T> {
         setError(null);
       })
       .catch((err) => {
-        console.log(`[useApiQuery] GET ${path} — rejected, cancelled=${cancelled}, err=${err instanceof Error ? err.message : String(err)}`);
+        console.log(`[useApiQuery:${instanceId}] GET ${path} — rejected, cancelled=${cancelled}, err=${err instanceof Error ? err.message : String(err)}`);
+        clearTimeout(hardStop);
         if (cancelled) return;
         setIsLoading(false);
         // Keep showing stale cached data on a background-refresh failure —
@@ -77,7 +96,9 @@ export function useApiQuery<T>(path: string | null): QueryState<T> {
       });
 
     return () => {
+      console.log(`[useApiQuery:${instanceId}] GET ${path} — cleanup (unmount or path change)`);
       cancelled = true;
+      clearTimeout(hardStop);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [path]);
