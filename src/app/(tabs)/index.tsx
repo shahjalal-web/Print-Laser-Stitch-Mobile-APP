@@ -162,7 +162,7 @@ export default function HomeScreen() {
           </View>
 
           {/* Vehicle sticker kits banner */}
-          <Pressable style={styles.section} onPress={() => router.push('/vehicle-stickers/index')}>
+          <Pressable style={styles.section} onPress={() => router.push('/vehicle-stickers')}>
             <View style={styles.vehicleBanner}>
               <Badge text="Vehicle-specific decal kits" />
               <ThemedText type="subtitle" style={styles.vehicleBannerTitle}>

@@ -7,7 +7,7 @@ import { ScreenBackground } from '@/components/screen-background';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Brand, Spacing } from '@/constants/theme';
-import { api } from '@/lib/api';
+import { useApiQuery } from '@/lib/api-cache';
 import { useCart } from '@/lib/cart-store';
 import type { VehicleSticker } from './index';
 
@@ -32,23 +32,16 @@ export default function VehicleDetailScreen() {
   const navigation = useNavigation();
   const { addItem, items } = useCart();
 
-  const [vehicle, setVehicle] = useState<VehicleSticker | null>(null);
-  const [loadFailed, setLoadFailed] = useState(false);
+  const { data: vehicles, isLoading, error } = useApiQuery<VehicleSticker[]>('/api/admin/vehicles');
+  const vehicle = useMemo(() => vehicles?.find((x) => x.id === id) ?? null, [vehicles, id]);
+  const loadFailed = !isLoading && (!!error || !vehicle);
   const [year, setYear] = useState<number | null>(null);
 
   useEffect(() => {
-    api
-      .get<VehicleSticker[]>('/api/admin/vehicles')
-      .then((all) => {
-        const v = all.find((x) => x.id === id) ?? null;
-        setVehicle(v);
-        if (v) {
-          navigation.setOptions({ title: `${v.make} ${v.model}` });
-          setYear(v.years[v.years.length - 1]);
-        }
-      })
-      .catch(() => setLoadFailed(true));
-  }, [id, navigation]);
+    if (!vehicle) return;
+    navigation.setOptions({ title: `${vehicle.make} ${vehicle.model}` });
+    setYear((current) => current ?? vehicle.years[vehicle.years.length - 1]);
+  }, [vehicle, navigation]);
 
   const sortedYears = useMemo(() => (vehicle ? [...vehicle.years].sort((a, b) => b - a) : []), [vehicle]);
 

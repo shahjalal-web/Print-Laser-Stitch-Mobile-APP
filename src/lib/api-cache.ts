@@ -56,28 +56,26 @@ export function useApiQuery<T>(path: string | null): QueryState<T> {
     }
 
     let cancelled = false;
-    const instanceId = Math.random().toString(36).slice(2, 8);
-    console.log(`[useApiQuery:${instanceId}] GET ${path} — starting`);
 
     // Belt-and-suspenders: api.get() already races its own fetch against a
-    // 15s timeout, but the vehicles screen has shown isLoading getting stuck
-    // even after the fetch/json-parse steps logged as complete — something
-    // downstream of that isn't reliably reaching this component's state.
-    // Whatever the exact cause, this effect must never leave isLoading stuck
-    // forever, so force it to settle on its own after a hard ceiling.
+    // 15s timeout and, on a network-level failure, retries once — a worst
+    // case of ~30s before it settles on its own. This ceiling must sit
+    // safely above that worst case, or it fires while a legitimate retry is
+    // still in flight and shows a premature "failed" state on top of a
+    // request that's about to succeed. This effect must never leave
+    // isLoading stuck forever, so force it to settle on its own after a
+    // hard ceiling.
     const hardStop = setTimeout(() => {
-      console.log(`[useApiQuery:${instanceId}] GET ${path} — hard-stop fired, forcing isLoading=false`);
       if (cancelled) return;
       setIsLoading(false);
       if (getCachedApi<T>(path) === undefined) {
         setError(new Error('Timed out waiting for a response.'));
       }
-    }, 20000);
+    }, 32000);
 
     api
       .get<T>(path)
       .then((fresh) => {
-        console.log(`[useApiQuery:${instanceId}] GET ${path} — resolved, cancelled=${cancelled}`);
         clearTimeout(hardStop);
         if (cancelled) return;
         cache.set(path, fresh);
@@ -86,7 +84,6 @@ export function useApiQuery<T>(path: string | null): QueryState<T> {
         setError(null);
       })
       .catch((err) => {
-        console.log(`[useApiQuery:${instanceId}] GET ${path} — rejected, cancelled=${cancelled}, err=${err instanceof Error ? err.message : String(err)}`);
         clearTimeout(hardStop);
         if (cancelled) return;
         setIsLoading(false);
@@ -96,7 +93,6 @@ export function useApiQuery<T>(path: string | null): QueryState<T> {
       });
 
     return () => {
-      console.log(`[useApiQuery:${instanceId}] GET ${path} — cleanup (unmount or path change)`);
       cancelled = true;
       clearTimeout(hardStop);
     };
@@ -105,16 +101,13 @@ export function useApiQuery<T>(path: string | null): QueryState<T> {
 
   const refetch = useCallback(async () => {
     if (!path) return;
-    console.log(`[useApiQuery] GET ${path} — refetch() called`);
     setIsRefreshing(true);
     try {
       const fresh = await api.get<T>(path);
       cache.set(path, fresh);
       setData(fresh);
       // Whichever path actually landed fresh data, the full-page spinner
-      // must never keep showing on top of it — vehicles was observed
-      // getting data through this function while isLoading (only ever
-      // cleared by the mount effect above) stayed stuck true forever.
+      // must never keep showing on top of it.
       setIsLoading(false);
       setError(null);
     } catch (err) {

@@ -40,10 +40,6 @@ export default function VehicleStickersScreen() {
   const [search, setSearch] = useState('');
   const [make, setMake] = useState('');
 
-  console.log(
-    `[VehicleStickersScreen] render — isLoading=${isLoading}, hasVehicles=${!!vehicles}, count=${vehicles?.length ?? 'n/a'}, error=${error ? String(error) : 'none'}`,
-  );
-
   const makes = useMemo(() => [...new Set((vehicles ?? []).map((v) => v.make))].sort(), [vehicles]);
 
   const filtered = useMemo(() => {
@@ -66,7 +62,12 @@ export default function VehicleStickersScreen() {
   if (loadFailed) {
     return (
       <ScreenBackground style={styles.centerFlex}>
-        <ThemedText themeColor="textSecondary">Couldn&apos;t load vehicles right now. Pull down to try again.</ThemedText>
+        <ThemedText themeColor="textSecondary">Couldn&apos;t load vehicles right now.</ThemedText>
+        <Pressable style={styles.retryButton} onPress={refetch}>
+          <ThemedText type="smallBold" style={styles.retryText}>
+            Try again
+          </ThemedText>
+        </Pressable>
       </ScreenBackground>
     );
   }
@@ -142,6 +143,17 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   centerFlex: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.four },
   centerText: { textAlign: 'center', marginTop: Spacing.six },
+  retryButton: {
+    marginTop: Spacing.four,
+    borderWidth: 1,
+    borderColor: Brand.cyan,
+    borderRadius: Spacing.two,
+    paddingHorizontal: Spacing.four,
+    paddingVertical: Spacing.two,
+  },
+  retryText: {
+    color: Brand.cyan,
+  },
   filters: {
     paddingHorizontal: Spacing.four,
     paddingTop: Spacing.three,

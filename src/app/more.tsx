@@ -50,7 +50,7 @@ export default function MoreScreen() {
       icon: 'car-sport-outline',
       action: () => {
         router.dismiss();
-        router.push('/vehicle-stickers/index');
+        router.push('/vehicle-stickers');
       },
     },
     {

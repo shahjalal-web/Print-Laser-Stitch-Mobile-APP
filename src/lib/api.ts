@@ -27,7 +27,6 @@ const REQUEST_TIMEOUT_MS = 15000;
 function withTimeout<T>(promise: Promise<T>, label: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const timer = setTimeout(() => {
-      console.log(`[api] ${label} — timed out after ${REQUEST_TIMEOUT_MS}ms`);
       reject(new ApiError('This is taking too long — please check your connection and try again.', 0));
     }, REQUEST_TIMEOUT_MS);
     promise.then(
@@ -37,7 +36,6 @@ function withTimeout<T>(promise: Promise<T>, label: string): Promise<T> {
       },
       (err) => {
         clearTimeout(timer);
-        console.log(`[api] ${label} — fetch() itself rejected: ${err instanceof Error ? err.message : String(err)}`);
         reject(err instanceof Error ? new ApiError(err.message, 0) : err);
       },
     );
@@ -45,7 +43,6 @@ function withTimeout<T>(promise: Promise<T>, label: string): Promise<T> {
 }
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  console.log(`[api] ${options.method ?? 'GET'} ${path} — calling fetch()`);
   const res = await withTimeout(
     fetch(`${API_BASE_URL}${path}`, {
       ...options,
@@ -57,15 +54,8 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     }),
     `${options.method ?? 'GET'} ${path}`,
   );
-  console.log(`[api] ${options.method ?? 'GET'} ${path} — fetch() resolved, status=${res.status}`);
 
-  const data = await res.json().catch((err) => {
-    console.log(`[api] ${options.method ?? 'GET'} ${path} — res.json() failed: ${err instanceof Error ? err.message : String(err)}`);
-    return null;
-  });
-  console.log(
-    `[api] ${options.method ?? 'GET'} ${path} — json parsed, isArray=${Array.isArray(data)}, length=${Array.isArray(data) ? data.length : 'n/a'}`,
-  );
+  const data = await res.json().catch(() => null);
 
   if (!res.ok) {
     const message = (data && typeof data === 'object' && 'error' in data
