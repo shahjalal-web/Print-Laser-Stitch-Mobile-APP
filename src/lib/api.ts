@@ -63,7 +63,9 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     console.log(`[api] ${options.method ?? 'GET'} ${path} — res.json() failed: ${err instanceof Error ? err.message : String(err)}`);
     return null;
   });
-  console.log(`[api] ${options.method ?? 'GET'} ${path} — json parsed`);
+  console.log(
+    `[api] ${options.method ?? 'GET'} ${path} — json parsed, isArray=${Array.isArray(data)}, length=${Array.isArray(data) ? data.length : 'n/a'}`,
+  );
 
   if (!res.ok) {
     const message = (data && typeof data === 'object' && 'error' in data
