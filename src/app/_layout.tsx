@@ -42,6 +42,10 @@ export default function RootLayout() {
                 name="signage-quotes"
                 options={{ headerShown: true, title: 'Decal Signage Calculator', headerRight: () => <HeaderMenuButtons /> }}
               />
+              <Stack.Screen
+                name="about"
+                options={{ headerShown: true, title: 'About Us', headerRight: () => <HeaderMenuButtons /> }}
+              />
             </Stack>
           </CartProvider>
         </AuthProvider>

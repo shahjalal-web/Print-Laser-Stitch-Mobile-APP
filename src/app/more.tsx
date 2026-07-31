@@ -96,7 +96,10 @@ export default function MoreScreen() {
       label: 'About Us',
       description: 'Our story and Martin County shop',
       icon: 'information-circle-outline',
-      action: () => WebBrowser.openBrowserAsync(`${SITE_ORIGIN}/about`),
+      action: () => {
+        router.dismiss();
+        router.push('/about');
+      },
     },
   ];
 

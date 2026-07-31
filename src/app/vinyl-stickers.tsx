@@ -479,7 +479,7 @@ const styles = StyleSheet.create({
     padding: Spacing.four,
     gap: Spacing.three,
   },
-  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, flexWrap: 'wrap' },
   stepBadge: {
     width: 24,
     height: 24,
@@ -487,9 +487,10 @@ const styles = StyleSheet.create({
     backgroundColor: Brand.yellow,
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
   stepBadgeText: { color: '#000' },
-  sectionTitle: { textTransform: 'uppercase', letterSpacing: 0.5 },
+  sectionTitle: { textTransform: 'uppercase', letterSpacing: 0.5, flexShrink: 1 },
   tileGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
   tileGrid2: { flexDirection: 'row', gap: Spacing.two },
   optionTile: {
