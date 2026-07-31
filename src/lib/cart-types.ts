@@ -54,6 +54,22 @@ export interface VinylStickerCartItem extends CartItemBase {
   fileName?: string;
   instructions?: string;
   editHref: string;
+  /** Preflight proof (set once the customer reviews & approves a proof via
+   * the website's Proof Studio, opened in-browser and handed back here). */
+  proof?: {
+    status: 'approved' | 'changes-requested';
+    /** Shopify Files URL of the flattened proof preview. */
+    proofUrl?: string;
+    /** Shopify Files URL of the production cutline SVG. */
+    cutlineUrl?: string;
+    shape: string;
+    borderThickness: string;
+    roundedCorners: string;
+    removedBackground: boolean;
+    lowResolution: boolean;
+    /** Customer note when they asked for changes instead of approving. */
+    changeNote?: string;
+  };
 }
 
 /** Decal Signage Calculator (service-plan-based). Single rectangle × qty, one

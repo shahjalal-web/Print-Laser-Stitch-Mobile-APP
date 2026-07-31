@@ -1,13 +1,16 @@
+import * as Linking from 'expo-linking';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { EMPTY_UPLOAD_SLOT, pickAndUpload, UploadBox, type UploadSlot } from '@/components/template-fit/upload-box';
 import { ScreenBackground } from '@/components/screen-background';
 import { ThemedText } from '@/components/themed-text';
 import { Brand, Spacing } from '@/constants/theme';
 import { useCart } from '@/lib/cart-store';
+import type { VinylStickerCartItem } from '@/lib/cart-types';
 import {
   MATERIAL_OPTIONS,
   QUANTITY_OPTIONS,
@@ -19,6 +22,10 @@ import {
   type ShapeKey,
   type SizeKey,
 } from '@/lib/pricing';
+import { isPreviewIncompatible } from '@/lib/template-fit/upload';
+
+type Proof = NonNullable<VinylStickerCartItem['proof']>;
+const PROOF_RETURN_SCHEME = 'printlaserstitchmobile://vinyl-stickers-proof';
 
 const SITE_ORIGIN = 'https://www.printlaserstitch.com';
 const MIN_CUSTOM_QTY = 25;
@@ -72,6 +79,23 @@ export default function VinylStickersScreen() {
   const [instructions, setInstructions] = useState('');
   const [upload, setUpload] = useState<UploadSlot>(EMPTY_UPLOAD_SLOT);
   const [isAdding, setIsAdding] = useState(false);
+  const [proof, setProof] = useState<Proof | null>(null);
+  const [isViewingProof, setIsViewingProof] = useState(false);
+
+  function selectShape(s: ShapeKey) {
+    setShape(s);
+    setProof(null);
+  }
+
+  function selectUpload() {
+    setProof(null);
+    pickAndUpload(setUpload);
+  }
+
+  function clearUpload() {
+    setProof(null);
+    setUpload(EMPTY_UPLOAD_SLOT);
+  }
 
   const effectiveQty: QuantityKey = useMemo(() => {
     if (quantity !== 'custom') return quantity;
@@ -103,9 +127,54 @@ export default function VinylStickersScreen() {
   }
 
   const canCheckout = !!upload.fileUrl && !upload.isUploading && !isAdding;
+  const needsProof = !!upload.file && !isPreviewIncompatible(upload.file.mimeType);
+  const readyForCart = canCheckout && (!needsProof || !!proof);
+
+  const widthIn = size === 'custom' ? customWidth : SIZE_OPTIONS.find((s) => s.key === size)?.inches ?? 3;
+  const heightIn = size === 'custom' ? customHeight : SIZE_OPTIONS.find((s) => s.key === size)?.inches ?? 3;
+
+  async function handleViewProof() {
+    if (!upload.fileUrl || isViewingProof) return;
+    setIsViewingProof(true);
+    try {
+      const rounded = (shape === 'square' || shape === 'rectangle') && roundedCorners ? 'soft' : 'none';
+      const params = new URLSearchParams({
+        imageUrl: upload.fileUrl,
+        shape,
+        rounded,
+        widthIn: String(widthIn),
+        heightIn: String(heightIn),
+        scheme: PROOF_RETURN_SCHEME,
+      });
+      const result = await WebBrowser.openAuthSessionAsync(
+        `${SITE_ORIGIN}/mobile-proof?${params.toString()}`,
+        PROOF_RETURN_SCHEME,
+      );
+      if (result.type !== 'success' || !result.url) return;
+      const { queryParams: qp } = Linking.parse(result.url);
+      const status = qp?.status;
+      if (qp && (status === 'approved' || status === 'changes-requested')) {
+        setProof({
+          status,
+          proofUrl: typeof qp.proofUrl === 'string' && qp.proofUrl ? qp.proofUrl : undefined,
+          cutlineUrl: typeof qp.cutlineUrl === 'string' && qp.cutlineUrl ? qp.cutlineUrl : undefined,
+          shape: typeof qp.shape === 'string' ? qp.shape : shape,
+          borderThickness: typeof qp.borderThickness === 'string' ? qp.borderThickness : 'normal',
+          roundedCorners: typeof qp.roundedCorners === 'string' ? qp.roundedCorners : rounded,
+          removedBackground: qp.removedBackground === 'true',
+          lowResolution: qp.lowResolution === 'true',
+          changeNote: typeof qp.changeNote === 'string' ? qp.changeNote : undefined,
+        });
+      } else if (status !== 'cancelled') {
+        Alert.alert('Proof not saved', 'Something went wrong generating the proof — please try again.');
+      }
+    } finally {
+      setIsViewingProof(false);
+    }
+  }
 
   function handleAddToCart() {
-    if (!canCheckout || !upload.file) return;
+    if (!readyForCart || !upload.file) return;
     setIsAdding(true);
     const sizeLabel = size === 'custom' ? `${customWidth}″ × ${customHeight}″` : SIZE_OPTIONS.find((s) => s.key === size)?.label ?? size;
     const shapeLabel = SHAPE_OPTIONS.find((s) => s.key === shape)?.label ?? shape;
@@ -115,7 +184,7 @@ export default function VinylStickersScreen() {
       kind: 'vinyl-sticker',
       title: 'Custom Vinyl Stickers',
       subtitle: `${sizeLabel} · ${shapeLabel} · ${materialLabel}`,
-      thumbnail: upload.file.uri,
+      thumbnail: proof?.proofUrl ?? upload.file.uri,
       unitLabel: `$${price.perUnit.toFixed(2)} / sticker`,
       totalPrice: Math.round(price.perUnit * orderQty * 100) / 100,
       quantity: orderQty,
@@ -131,6 +200,7 @@ export default function VinylStickersScreen() {
       fileName: upload.file.name,
       instructions: instructions || undefined,
       editHref: '/vinyl-stickers',
+      proof: proof ?? undefined,
     });
     router.push('/cart');
   }
@@ -161,7 +231,7 @@ export default function VinylStickersScreen() {
         <Section step={1} title="Choose a shape">
           <Pressable
             style={[styles.wideTile, shape === 'custom' && styles.tileActive]}
-            onPress={() => setShape('custom')}>
+            onPress={() => selectShape('custom')}>
             <Image source={{ uri: `${SITE_ORIGIN}${SHAPE_ICON.custom}` }} style={styles.wideTileIcon} contentFit="contain" />
             <View style={styles.wideTileText}>
               <ThemedText type="smallBold">Custom Shape</ThemedText>
@@ -179,7 +249,7 @@ export default function VinylStickersScreen() {
                 icon={`${SITE_ORIGIN}${SHAPE_ICON[s.key as ShapeKey]}`}
                 label={s.label}
                 active={shape === s.key}
-                onPress={() => setShape(s.key as ShapeKey)}
+                onPress={() => selectShape(s.key as ShapeKey)}
               />
             ))}
           </View>
@@ -305,12 +375,19 @@ export default function VinylStickersScreen() {
         </Section>
 
         <Section step={5} title="Upload your artwork">
-          <UploadBox
-            slot={upload}
-            onSelect={() => pickAndUpload(setUpload)}
-            onClear={() => setUpload(EMPTY_UPLOAD_SLOT)}
-            hint="PNG · JPG · SVG · PDF"
-          />
+          <UploadBox slot={upload} onSelect={selectUpload} onClear={clearUpload} hint="PNG · JPG · SVG · PDF" />
+          {proof && (
+            <View style={styles.proofStatus}>
+              <ThemedText type="small" style={{ color: proof.status === 'approved' ? '#34d399' : Brand.yellow }}>
+                {proof.status === 'approved' ? '✓ Proof approved' : '✓ Changes requested — we’ll follow up'}
+              </ThemedText>
+              <Pressable onPress={handleViewProof} disabled={isViewingProof}>
+                <ThemedText type="small" style={{ color: Brand.cyan }}>
+                  View again
+                </ThemedText>
+              </Pressable>
+            </View>
+          )}
         </Section>
 
         <Section step={6} title="Additional instructions" optional>
@@ -339,12 +416,21 @@ export default function VinylStickersScreen() {
           </ThemedText>
         </View>
 
-        <Pressable style={[styles.cartButton, !canCheckout && styles.cartButtonDisabled]} disabled={!canCheckout} onPress={handleAddToCart}>
-          {isAdding ? (
+        <Pressable
+          style={[styles.cartButton, !canCheckout && styles.cartButtonDisabled]}
+          disabled={!canCheckout}
+          onPress={needsProof && !proof ? handleViewProof : handleAddToCart}>
+          {isAdding || isViewingProof ? (
             <ActivityIndicator color="#000" />
           ) : (
             <ThemedText type="smallBold" style={styles.cartButtonText}>
-              {upload.isUploading ? 'Uploading…' : upload.fileUrl ? `Add to Cart · $${price.total.toFixed(2)}` : 'Upload Artwork to Continue'}
+              {upload.isUploading
+                ? 'Uploading…'
+                : !upload.fileUrl
+                  ? 'Upload Artwork to Continue'
+                  : needsProof && !proof
+                    ? `View Proof · $${price.total.toFixed(2)}`
+                    : `Add to Cart · $${price.total.toFixed(2)}`}
             </ThemedText>
           )}
         </Pressable>
@@ -628,4 +714,10 @@ const styles = StyleSheet.create({
   },
   cartButtonDisabled: { backgroundColor: 'rgba(255,255,255,0.16)' },
   cartButtonText: { color: '#000000', textTransform: 'uppercase', letterSpacing: 0.5 },
+  proofStatus: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: Spacing.one,
+  },
 });
