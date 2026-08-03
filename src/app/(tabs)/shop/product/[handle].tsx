@@ -1,5 +1,6 @@
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams, useNavigation } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -12,7 +13,9 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { QuantityStepper } from '@/components/quantity-stepper';
 import { ScreenBackground } from '@/components/screen-background';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -21,9 +24,17 @@ import { Brand, Spacing } from '@/constants/theme';
 import { useApiQuery } from '@/lib/api-cache';
 import { useCart } from '@/lib/cart-store';
 import { downloadAndShareBlankTemplate } from '@/lib/template-fit/blank-template';
+import { HOW_TO_ORDER_VIDEO_IDS } from '@/lib/how-to-order-videos';
 import { BLEED_IN } from '@/lib/template-fit/constants';
 import { detectTemplateFit, type TemplateFitOverrides } from '@/lib/template-fit/detect';
 import { findDimensionOption } from '@/lib/parse-size';
+import {
+  DEFAULT_APPAREL_MIN_QUANTITY,
+  detectMinQuantityFromTitle,
+  hasApparelSizes,
+  isQuantityOptionName,
+  isSizeOptionName,
+} from '@/lib/product-quantity';
 import type { TemplateFitPayload } from '@/lib/template-fit/types';
 
 type ShopifyImageT = { url: string; altText: string | null };
@@ -86,6 +97,8 @@ export default function ProductScreen() {
   } = useApiQuery<Product>(handle ? `/api/products/${handle}` : null);
   const loadFailed = !isLoading && !product && !!loadError;
   const [selected, setSelected] = useState<Record<string, string>>({});
+  const [sizeQuantities, setSizeQuantities] = useState<Record<string, number>>({});
+  const [quantity, setQuantity] = useState(1);
   const [frontUpload, setFrontUpload] = useState<UploadSlot>(EMPTY_UPLOAD_SLOT);
   const [backUpload, setBackUpload] = useState<UploadSlot>(EMPTY_UPLOAD_SLOT);
   const [printSide, setPrintSide] = useState<'front' | 'both'>('front');
@@ -93,8 +106,30 @@ export default function ProductScreen() {
   const [instructions, setInstructions] = useState('');
   const [downloadingTemplate, setDownloadingTemplate] = useState(false);
 
-  // Only seed `selected` once per handle — a background revalidation
-  // shouldn't clobber options the customer has already picked.
+  const sizeOption = useMemo(
+    () => product?.options.find((o) => isSizeOptionName(o.name)) ?? null,
+    [product],
+  );
+  // Apparel (Size option with S/M/L-style values) gets a per-size quantity
+  // matrix with a minimum order size — everything else (banners, business
+  // cards, dimensional "Size" like 4x6…) keeps the single chip picker.
+  const isApparel = useMemo(
+    () => (sizeOption ? hasApparelSizes(sizeOption.values) : false),
+    [sizeOption],
+  );
+  const hasQuantityVariantOption = useMemo(
+    () => product?.options.some((o) => isQuantityOptionName(o.name)) ?? false,
+    [product],
+  );
+  const minQuantity = useMemo(() => {
+    if (!product) return 1;
+    const fromTitle = detectMinQuantityFromTitle(product.title);
+    if (isApparel) return fromTitle ?? DEFAULT_APPAREL_MIN_QUANTITY;
+    return fromTitle ?? 1;
+  }, [product, isApparel]);
+
+  // Only seed `selected`/quantities once per handle — a background
+  // revalidation shouldn't clobber options the customer has already picked.
   const initializedHandle = useRef<string | null>(null);
   useEffect(() => {
     if (!product) return;
@@ -107,6 +142,9 @@ export default function ProductScreen() {
       for (const opt of first.selectedOptions) initial[opt.name] = opt.value;
       setSelected(initial);
     }
+    setSizeQuantities({});
+    const fromTitle = detectMinQuantityFromTitle(product.title);
+    setQuantity(fromTitle ?? 1);
   }, [product, navigation, handle]);
 
   const activeVariant = useMemo(() => {
@@ -118,6 +156,22 @@ export default function ProductScreen() {
     );
   }, [product, selected]);
 
+  function findVariantForSize(size: string) {
+    if (!product || !sizeOption) return null;
+    return (
+      product.variants.find((v) =>
+        v.selectedOptions.every((o) =>
+          o.name === sizeOption.name ? o.value === size : selected[o.name] === o.value,
+        ),
+      ) ?? null
+    );
+  }
+
+  const totalSizeQuantity = useMemo(
+    () => Object.values(sizeQuantities).reduce((sum, n) => sum + n, 0),
+    [sizeQuantities],
+  );
+
   const images = useMemo(() => {
     if (!product) return [];
     const fromMedia = product.media
@@ -125,6 +179,8 @@ export default function ProductScreen() {
       .filter((u): u is string => !!u);
     return fromMedia.length > 0 ? fromMedia : product.featuredImage ? [product.featuredImage.url] : [];
   }, [product]);
+
+  const howToOrderVideoId = product ? HOW_TO_ORDER_VIDEO_IDS[product.handle] : undefined;
 
   const detection = useMemo(() => {
     if (!product) return null;
@@ -138,7 +194,20 @@ export default function ProductScreen() {
   const anyUploading = frontUpload.isUploading || backUpload.isUploading;
   const willUseTemplateFit = !!detection?.templateFitEnabled && !!detection.sizeInches;
 
-  const canCheckout = !!activeVariant && frontReady && backReady && !anyUploading;
+  const orderTotal = isApparel
+    ? Object.entries(sizeQuantities).reduce((sum, [size, qty]) => {
+        if (qty <= 0) return sum;
+        const v = findVariantForSize(size);
+        return v ? sum + Number(v.price) * qty : sum;
+      }, 0)
+    : activeVariant
+      ? Number(activeVariant.price) * quantity
+      : 0;
+
+  const qtyOk = isApparel
+    ? totalSizeQuantity >= minQuantity
+    : hasQuantityVariantOption || quantity >= minQuantity;
+  const canCheckout = !!activeVariant && frontReady && backReady && !anyUploading && qtyOk;
 
   function buildExtraProperties(): Record<string, string> {
     const extraProperties: Record<string, string> = {};
@@ -164,7 +233,44 @@ export default function ProductScreen() {
   }
 
   function handleAddToCart() {
-    if (!product || !activeVariant || !canCheckout) return;
+    if (!product || !canCheckout) return;
+    const extraProperties = buildExtraProperties();
+
+    if (isApparel && sizeOption) {
+      const lines = Object.entries(sizeQuantities).filter(([, qty]) => qty > 0);
+      for (const [size, qty] of lines) {
+        const variant = findVariantForSize(size);
+        if (!variant) continue;
+        const unitPrice = Number(variant.price);
+        addItem({
+          kind: 'product',
+          variantId: variant.id,
+          productTitle: product.title,
+          title: product.title,
+          subtitle: [
+            ...Object.entries(selected)
+              .filter(([k]) => k !== sizeOption.name)
+              .map(([k, v]) => `${k}: ${v}`),
+            `${sizeOption.name}: ${size}`,
+          ].join(' · '),
+          thumbnail: images[0] ?? '',
+          unitLabel: `$${unitPrice.toFixed(2)} each`,
+          selectedOptions: { ...selected, [sizeOption.name]: size },
+          qty,
+          quantity: qty,
+          unitPrice,
+          totalPrice: Math.round(unitPrice * qty * 100) / 100,
+          extraProperties,
+        });
+      }
+      Alert.alert('Added to cart', `${product.title} — ${totalSizeQuantity} pcs`, [
+        { text: 'Keep Shopping', style: 'cancel' },
+        { text: 'View Cart', onPress: () => router.push('/cart') },
+      ]);
+      return;
+    }
+
+    if (!activeVariant) return;
     const unitPrice = Number(activeVariant.price);
     addItem({
       kind: 'product',
@@ -177,11 +283,11 @@ export default function ProductScreen() {
       thumbnail: images[0] ?? '',
       unitLabel: `$${unitPrice.toFixed(2)} each`,
       selectedOptions: selected,
-      qty: 1,
-      quantity: 1,
+      qty: quantity,
+      quantity,
       unitPrice,
-      totalPrice: unitPrice,
-      extraProperties: buildExtraProperties(),
+      totalPrice: Math.round(unitPrice * quantity * 100) / 100,
+      extraProperties,
     });
     Alert.alert('Added to cart', product.title, [
       { text: 'Keep Shopping', style: 'cancel' },
@@ -226,7 +332,7 @@ export default function ProductScreen() {
         title: product.title,
         thumbnail: images[0] ?? '',
         unitPrice,
-        qty: 1,
+        qty: quantity,
         variantId: activeVariant.id,
         productTitle: product.title,
         selectedOptions: selected,
@@ -285,6 +391,7 @@ export default function ProductScreen() {
   return (
     <ScreenBackground style={styles.flex}>
       <ScrollView
+        style={styles.flex}
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={refetch} />}>
         {images.length > 0 && (
@@ -295,6 +402,28 @@ export default function ProductScreen() {
               </ThemedView>
             ))}
           </ScrollView>
+        )}
+
+        {!!howToOrderVideoId && (
+          <View style={styles.howToOrder}>
+            <ThemedText type="smallBold" style={styles.howToOrderTitle}>
+              How to Order
+            </ThemedText>
+            <Pressable
+              style={styles.videoThumbWrap}
+              onPress={() =>
+                WebBrowser.openBrowserAsync(`https://www.youtube.com/watch?v=${howToOrderVideoId}`)
+              }>
+              <Image
+                source={{ uri: `https://img.youtube.com/vi/${howToOrderVideoId}/hqdefault.jpg` }}
+                style={styles.videoThumb}
+                contentFit="cover"
+              />
+              <View style={styles.playButton}>
+                <ThemedText style={styles.playButtonIcon}>▶</ThemedText>
+              </View>
+            </Pressable>
+          </View>
         )}
 
         <ThemedText type="title" style={styles.title}>
@@ -309,31 +438,84 @@ export default function ProductScreen() {
           <ThemedText style={styles.soldOut}>Currently unavailable</ThemedText>
         )}
 
-        {product.options.map((opt) => (
-          <View key={opt.id} style={styles.optionGroup}>
-            <ThemedText type="smallBold" style={styles.optionLabel}>
-              {opt.name}
-            </ThemedText>
-            <View style={styles.optionValues}>
-              {opt.values.map((value) => {
-                const isActive = selected[opt.name] === value;
+        {product.options
+          .filter((opt) => !(isApparel && sizeOption && opt.id === sizeOption.id))
+          .map((opt) => (
+            <View key={opt.id} style={styles.optionGroup}>
+              <ThemedText type="smallBold" style={styles.optionLabel}>
+                {opt.name}
+              </ThemedText>
+              <View style={styles.optionValues}>
+                {opt.values.map((value) => {
+                  const isActive = selected[opt.name] === value;
+                  return (
+                    <Pressable
+                      key={value}
+                      onPress={() => setSelected((prev) => ({ ...prev, [opt.name]: value }))}
+                      style={[styles.chip, isActive && styles.chipActive]}>
+                      <ThemedText
+                        type="small"
+                        style={isActive ? styles.chipTextActive : undefined}
+                        themeColor={isActive ? undefined : 'textSecondary'}>
+                        {value}
+                      </ThemedText>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+          ))}
+
+        {isApparel && sizeOption && (
+          <View style={styles.optionGroup}>
+            <View style={styles.sizeSectionHeader}>
+              <ThemedText type="smallBold" style={styles.optionLabel}>
+                {sizeOption.name} & Quantity
+              </ThemedText>
+              <ThemedText type="small" themeColor={totalSizeQuantity >= minQuantity ? 'textSecondary' : undefined} style={!(totalSizeQuantity >= minQuantity) ? styles.qtyWarningText : undefined}>
+                {totalSizeQuantity} / min {minQuantity}
+              </ThemedText>
+            </View>
+            <View style={styles.sizeMatrix}>
+              {sizeOption.values.map((size) => {
+                const variant = findVariantForSize(size);
+                const qty = sizeQuantities[size] ?? 0;
                 return (
-                  <Pressable
-                    key={value}
-                    onPress={() => setSelected((prev) => ({ ...prev, [opt.name]: value }))}
-                    style={[styles.chip, isActive && styles.chipActive]}>
-                    <ThemedText
-                      type="small"
-                      style={isActive ? styles.chipTextActive : undefined}
-                      themeColor={isActive ? undefined : 'textSecondary'}>
-                      {value}
-                    </ThemedText>
-                  </Pressable>
+                  <View key={size} style={styles.sizeRow}>
+                    <View style={styles.sizeRowLabel}>
+                      <ThemedText type="smallBold">{size}</ThemedText>
+                      {!!variant && (
+                        <ThemedText type="small" themeColor="textSecondary">
+                          ${Number(variant.price).toFixed(2)}
+                        </ThemedText>
+                      )}
+                    </View>
+                    <QuantityStepper
+                      value={qty}
+                      min={0}
+                      disabled={!variant?.availableForSale}
+                      onChange={(n) => setSizeQuantities((prev) => ({ ...prev, [size]: n }))}
+                    />
+                  </View>
                 );
               })}
             </View>
+            {totalSizeQuantity > 0 && totalSizeQuantity < minQuantity && (
+              <ThemedText type="small" style={styles.qtyWarningText}>
+                Add {minQuantity - totalSizeQuantity} more to reach the minimum order of {minQuantity}.
+              </ThemedText>
+            )}
           </View>
-        ))}
+        )}
+
+        {!isApparel && !hasQuantityVariantOption && (
+          <View style={styles.optionGroup}>
+            <ThemedText type="smallBold" style={styles.optionLabel}>
+              {minQuantity > 1 ? `Quantity (min ${minQuantity})` : 'Quantity'}
+            </ThemedText>
+            <QuantityStepper value={quantity} min={minQuantity} onChange={setQuantity} />
+          </View>
+        )}
 
         {!!product.descriptionHtml && (
           <ThemedText themeColor="textSecondary" style={styles.description}>
@@ -434,24 +616,38 @@ export default function ProductScreen() {
           />
         </View>
 
+      </ScrollView>
+
+      <SafeAreaView edges={['bottom']} style={styles.bottomBar}>
+        <View style={styles.bottomBarSummary}>
+          <ThemedText type="small" themeColor="textSecondary">
+            {isApparel ? `${totalSizeQuantity} pcs` : `Qty ${quantity}`}
+          </ThemedText>
+          <ThemedText type="smallBold">${orderTotal.toFixed(2)}</ThemedText>
+        </View>
         <Pressable
           style={[
             styles.cartButton,
-            (!canCheckout || (activeVariant && !activeVariant.availableForSale)) && styles.cartButtonDisabled,
+            (!canCheckout || (!isApparel && activeVariant && !activeVariant.availableForSale)) &&
+              styles.cartButtonDisabled,
           ]}
-          disabled={!canCheckout || !activeVariant || !activeVariant.availableForSale}
+          disabled={!canCheckout || (!isApparel && (!activeVariant || !activeVariant.availableForSale))}
           onPress={willUseTemplateFit ? handleContinueToTemplateFit : handleAddToCart}>
           {anyUploading ? (
             <ActivityIndicator color="#000" />
           ) : (
             <ThemedText type="smallBold" style={styles.cartButtonText}>
-              {activeVariant && !activeVariant.availableForSale
-                ? 'Unavailable'
-                : !frontReady || !backReady
-                  ? `Upload ${needsFront && needsBack ? 'both designs' : 'your design'} to continue`
-                  : willUseTemplateFit
-                    ? 'Continue →'
-                    : 'Add to Cart'}
+              {isApparel && totalSizeQuantity < minQuantity
+                ? totalSizeQuantity === 0
+                  ? `Select sizes (min ${minQuantity})`
+                  : `Add ${minQuantity - totalSizeQuantity} more to reach min ${minQuantity}`
+                : !isApparel && activeVariant && !activeVariant.availableForSale
+                  ? 'Unavailable'
+                  : !frontReady || !backReady
+                    ? `Upload ${needsFront && needsBack ? 'both designs' : 'your design'} to continue`
+                    : willUseTemplateFit
+                      ? 'Continue →'
+                      : 'Add to Cart'}
             </ThemedText>
           )}
         </Pressable>
@@ -460,7 +656,7 @@ export default function ProductScreen() {
             Next, you&apos;ll fit your design onto the print template.
           </ThemedText>
         )}
-      </ScrollView>
+      </SafeAreaView>
     </ScreenBackground>
   );
 }
@@ -483,6 +679,58 @@ const styles = StyleSheet.create({
   galleryImage: {
     width: '100%',
     height: '100%',
+  },
+  howToOrder: {
+    marginTop: Spacing.four,
+    paddingHorizontal: Spacing.four,
+    gap: Spacing.two,
+  },
+  howToOrderTitle: {
+    color: Brand.yellow,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  videoThumbWrap: {
+    aspectRatio: 16 / 9,
+    borderRadius: Spacing.three,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  videoThumb: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  playButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.4)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  playButtonIcon: {
+    color: '#fff',
+    fontSize: 20,
+  },
+  bottomBar: {
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: 'rgba(10,10,10,0.97)',
+    paddingHorizontal: Spacing.four,
+    paddingTop: Spacing.three,
+    paddingBottom: Spacing.two,
+  },
+  bottomBarSummary: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
   },
   title: {
     fontSize: 26,
@@ -514,6 +762,26 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: Spacing.two,
   },
+  sizeSectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: Spacing.one,
+  },
+  sizeMatrix: { gap: Spacing.two },
+  sizeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    borderRadius: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+  },
+  sizeRowLabel: { gap: 2 },
+  qtyWarningText: { color: Brand.magenta },
   chip: {
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.16)',
@@ -534,8 +802,7 @@ const styles = StyleSheet.create({
     lineHeight: 21,
   },
   cartButton: {
-    marginTop: Spacing.five,
-    marginHorizontal: Spacing.four,
+    marginTop: Spacing.two,
     backgroundColor: Brand.yellow,
     borderRadius: Spacing.two,
     paddingVertical: Spacing.three,

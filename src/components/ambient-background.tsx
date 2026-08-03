@@ -9,15 +9,22 @@ import Animated, {
 } from 'react-native-reanimated';
 
 // Ports the website's AmbientBackground (src/components/AmbientBackground.tsx
-// on the Next.js site) — three slow-drifting blurred orbs in the same
-// indigo/cyan/pink palette. RN has no CSS blur filter and react-native-svg's
-// radial gradients hit a broken native module on this Expo Go build, so each
-// orb is approximated with concentric circles of falling opacity — a cheap,
-// dependency-free "poor man's radial gradient" that reads the same as a
-// blurred glow at this scale.
+// on the Next.js site) — three slow-drifting orbs in the same indigo/cyan/pink
+// palette. The site blurs them with CSS blur(100px), which spreads a lot of
+// low-opacity color over a huge area with no visible edge. RN has no reliable
+// equivalent (react-native-svg's RadialGradient is unstable here; expo-blur's
+// BlurView doesn't behave like a backdrop blur on Android and made the whole
+// screen look washed out instead of just the orbs) — so this fakes the same
+// "soft wash, no visible shape" look with many low-opacity, non-overlapping
+// ring outlines instead of filled discs, which avoids the alpha-stacking that
+// made earlier attempts read as a solid, hard-edged circle.
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
-const RINGS = 6;
+// High ring count so the concentric strokes blend into a smooth gradient
+// instead of reading as visible "contour line" bands — the website's CSS
+// blur(100px) has no discrete steps at all, so more (thinner) rings gets
+// closer to that continuous falloff.
+const RING_COUNT = 56;
 
 function Orb({
   size,
@@ -55,14 +62,19 @@ function Orb({
     ],
   }));
 
+  const bandWidth = size / 2 / RING_COUNT;
+
   return (
     <Animated.View style={[styles.orb, { width: size, height: size }, style]}>
-      {Array.from({ length: RINGS }).map((_, i) => {
-        // Rings shrink from the outside in; opacity falls off quadratically
-        // so the center reads as a soft core rather than a hard disc.
-        const t = (RINGS - i) / RINGS;
-        const ringSize = size * t;
-        const ringOpacity = opacity * (1 - t) * (1 - t) * 3.2;
+      {Array.from({ length: RING_COUNT }).map((_, i) => {
+        // i=0 is the outermost (largest, faintest) ring; higher i is smaller
+        // and denser toward the center. Each ring is a hollow outline (not a
+        // filled disc), so rings never overlap the same pixels and opacity
+        // never compounds — the value below is exactly what's on screen.
+        const outerRadius = (size / 2) * (1 - i / RING_COUNT);
+        const ringSize = outerRadius * 2;
+        const distFromCenter = i / RING_COUNT; // 0 = outer edge, ~1 = center
+        const bandOpacity = opacity * Math.pow(distFromCenter, 2.4);
         return (
           <View
             key={i}
@@ -73,8 +85,9 @@ function Orb({
               width: ringSize,
               height: ringSize,
               borderRadius: ringSize / 2,
-              backgroundColor: color,
-              opacity: Math.min(ringOpacity, 1),
+              borderWidth: bandWidth + 1,
+              borderColor: color,
+              opacity: Math.min(bandOpacity, 1),
             }}
           />
         );
@@ -90,7 +103,7 @@ export function AmbientBackground() {
       <Orb
         size={orbSize}
         color="#6366f1"
-        opacity={0.45}
+        opacity={0.12}
         startX={-orbSize * 0.35}
         startY={-orbSize * 0.25}
         driftX={screenWidth * 0.25}
@@ -100,7 +113,7 @@ export function AmbientBackground() {
       <Orb
         size={orbSize * 0.9}
         color="#22d3ee"
-        opacity={0.4}
+        opacity={0.11}
         startX={screenWidth * 0.35}
         startY={screenHeight * 0.22}
         driftX={-screenWidth * 0.3}
@@ -110,7 +123,7 @@ export function AmbientBackground() {
       <Orb
         size={orbSize * 0.8}
         color="#ec4899"
-        opacity={0.38}
+        opacity={0.1}
         startX={-orbSize * 0.15}
         startY={screenHeight * 0.55}
         driftX={screenWidth * 0.3}

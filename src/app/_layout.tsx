@@ -34,6 +34,7 @@ export default function RootLayout() {
                 name="vinyl-stickers"
                 options={{ headerShown: true, title: 'Custom Vinyl Stickers', headerRight: () => <HeaderMenuButtons /> }}
               />
+              <Stack.Screen name="vinyl-stickers-proof" options={{ headerShown: false, animation: 'none' }} />
               <Stack.Screen
                 name="decal-quote"
                 options={{ headerShown: true, title: 'Quick Quote', headerRight: () => <HeaderMenuButtons /> }}

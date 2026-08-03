@@ -5,6 +5,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, View, type ColorValue } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { CategoryCard } from '@/components/category-card';
 import { FixedTopBar } from '@/components/menu-button';
 import { ScreenBackground } from '@/components/screen-background';
 import { ThemedText } from '@/components/themed-text';
@@ -57,9 +58,14 @@ export default function HomeScreen() {
             />
 
             <View style={styles.ctaRow}>
-              <CtaButton label="Get a Quote" colors={[Brand.yellow, Brand.yellowStrong]} onPress={() => router.push('/shop')} />
-              <CtaButton label="Browse Products" colors={[Brand.cyan, Brand.cyanStrong]} onPress={() => router.push('/shop')} />
+              <CtaButton label="Get a Quote →" colors={[Brand.yellow, Brand.yellowStrong]} onPress={() => router.push('/vinyl-stickers')} />
+              <CtaButton label="Browse Products →" colors={[Brand.cyan, Brand.cyanStrong]} onPress={() => router.push('/shop')} />
             </View>
+            <Pressable onPress={() => router.push('/gallery')} style={({ pressed }) => [styles.galleryButton, pressed && styles.pressed]}>
+              <ThemedText type="smallBold" style={styles.galleryButtonText}>
+                View Our Gallery →
+              </ThemedText>
+            </Pressable>
           </View>
 
           {/* Custom Sticker Builder banner */}
@@ -72,28 +78,23 @@ export default function HomeScreen() {
                 end={{ x: 1, y: 0.9 }}
                 style={StyleSheet.absoluteFill}
               />
-              <View style={styles.stickerBannerBadge}>
-                <ThemedText type="small" style={styles.stickerBannerKicker}>
-                  DESIGN IT YOURSELF
+              <View style={styles.stickerBannerText}>
+                <ThemedText style={styles.stickerBannerTitle}>Custom Vinyl Stickers</ThemedText>
+                <ThemedText style={styles.stickerBannerBody} numberOfLines={3}>
+                  Upload your artwork, pick a shape, size and finish, then see an instant proof — before you ever
+                  check out.
                 </ThemedText>
+                <View style={styles.stickerBannerCta}>
+                  <ThemedText type="smallBold" style={styles.stickerBannerCtaText}>
+                    Start Designing →
+                  </ThemedText>
+                </View>
               </View>
-              <ThemedText type="subtitle" style={styles.stickerBannerTitle}>
-                Custom Vinyl Stickers
-              </ThemedText>
-              <ThemedText style={styles.stickerBannerBody} numberOfLines={2}>
-                Upload your artwork, pick a shape, size and finish, then see an instant proof — before you ever
-                check out.
-              </ThemedText>
               <Image
                 source={{ uri: `${SITE_ORIGIN}/vinyl-sticker-logo.png` }}
                 style={styles.stickerBannerImage}
                 contentFit="cover"
               />
-              <View style={styles.stickerBannerCta}>
-                <ThemedText type="smallBold" style={styles.stickerBannerCtaText}>
-                  Start Designing →
-                </ThemedText>
-              </View>
             </View>
           </Pressable>
 
@@ -101,7 +102,7 @@ export default function HomeScreen() {
           <View style={styles.section}>
             <Badge text="Make your selection" center />
             <ThemedText type="subtitle" style={styles.sectionTitle}>
-              What can we make for you?
+              WHAT CAN WE <ThemedText type="subtitle" style={[styles.sectionTitle, styles.sectionTitleAccent]}>MAKE FOR YOU?</ThemedText>
             </ThemedText>
             <ThemedText themeColor="textSecondary" style={styles.categoryIntro}>
               {collections
@@ -119,45 +120,16 @@ export default function HomeScreen() {
             )}
 
             <View style={styles.categoryGrid}>
-              {collections?.map((c, i) => {
-                const theme = themeForCategory(c.handle, i);
-                return (
-                  <Pressable
-                    key={c.id}
-                    style={styles.categoryCard}
-                    onPress={() => router.push({ pathname: '/shop/[handle]', params: { handle: c.handle } })}>
-                    <LinearGradient
-                      colors={[theme.base, theme.base, theme.diagonal, theme.diagonal]}
-                      locations={[0, 0.35, 0.4, 1]}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0.9 }}
-                      style={StyleSheet.absoluteFill}
-                    />
-                    <View style={styles.categoryText}>
-                      <ThemedText type="smallBold" numberOfLines={2} style={{ color: theme.heading }}>
-                        {c.title}
-                      </ThemedText>
-                      {!!c.description && (
-                        <ThemedText type="small" numberOfLines={2} style={{ color: theme.desc }}>
-                          {c.description}
-                        </ThemedText>
-                      )}
-                      <View style={styles.shopNowPill}>
-                        <ThemedText type="small" style={styles.shopNowText}>
-                          Shop Now
-                        </ThemedText>
-                      </View>
-                    </View>
-                    {c.image?.url ? (
-                      <Image source={{ uri: c.image.url }} style={styles.categoryImage} contentFit="contain" />
-                    ) : (
-                      <View style={styles.categoryImageFallback}>
-                        <ThemedText style={styles.categoryImageFallbackEmoji}>🗂️</ThemedText>
-                      </View>
-                    )}
-                  </Pressable>
-                );
-              })}
+              {collections?.map((c, i) => (
+                <CategoryCard
+                  key={c.id}
+                  title={c.title}
+                  description={c.description}
+                  imageUrl={c.image?.url}
+                  theme={themeForCategory(c.handle, i)}
+                  onPress={() => router.push({ pathname: '/shop/[handle]', params: { handle: c.handle } })}
+                />
+              ))}
             </View>
           </View>
 
@@ -172,16 +144,17 @@ export default function HomeScreen() {
                 Pick your make, model and year — see decal sets cut perfectly for your exact vehicle. Hood sets,
                 bedsides, full kits and more.
               </ThemedText>
-              <Image
-                source={{ uri: `${SITE_ORIGIN}/car wrap decal.png` }}
-                style={styles.vehicleBannerImage}
-                contentFit="cover"
-              />
+              <Checklist items={['Hood Set', 'Bedside Decals', 'Full Vehicle Set', 'Back Decals']} color={Brand.yellow} />
               <View style={[styles.stickerBannerCta, { backgroundColor: Brand.cyan }]}>
                 <ThemedText type="smallBold" style={styles.stickerBannerCtaText}>
                   Find Your Vehicle →
                 </ThemedText>
               </View>
+              <Image
+                source={{ uri: `${SITE_ORIGIN}/car wrap decal.png` }}
+                style={styles.vehicleBannerImage}
+                contentFit="cover"
+              />
             </View>
           </Pressable>
 
@@ -196,11 +169,26 @@ export default function HomeScreen() {
                 Add panels for doors, windows, walls, wood or metal — pick a vinyl material and get instant pricing
                 with 7% Martin County tax included.
               </ThemedText>
+              <Checklist
+                items={['Add multiple panels in one quote', '5 vinyl materials + special order', 'Discount + 7% tax handled automatically']}
+                color={Brand.cyan}
+              />
               <View style={[styles.stickerBannerCta, { backgroundColor: Brand.cyan }]}>
                 <ThemedText type="smallBold" style={styles.stickerBannerCtaText}>
                   Open Quick Quote →
                 </ThemedText>
               </View>
+              <SampleQuote
+                accent={Brand.cyan}
+                rows={[
+                  { label: '🚪 Door', value: '12″ × 12″' },
+                  { label: 'Material', value: 'Full Vinyl' },
+                  { label: 'Subtotal', value: '$16.00' },
+                  { label: 'Tax (7%)', value: '$1.12' },
+                ]}
+                totalLabel="Total"
+                total="$17.12"
+              />
             </View>
           </Pressable>
 
@@ -215,17 +203,37 @@ export default function HomeScreen() {
                 Enter width and length, pick a service tier (Print Only, Design &amp; Print, or Full Install), and
                 get an instant quote.
               </ThemedText>
+              <Checklist
+                items={['Toggle between feet and inches', '3 service tiers: $10 / $12 / $18 per sq ft', 'Custom discount support']}
+                color={Brand.yellow}
+              />
               <View style={styles.stickerBannerCta}>
                 <ThemedText type="smallBold" style={styles.stickerBannerCtaText}>
                   Open Calculator →
                 </ThemedText>
               </View>
+              <SampleQuote
+                accent={Brand.yellow}
+                rows={[
+                  { label: 'Width × Length', value: '1′ × 1.7′' },
+                  { label: 'Service', value: 'Full Install' },
+                  { label: 'Rate', value: '$18.00 / sq ft' },
+                  { label: 'Quantity', value: '1' },
+                ]}
+                totalLabel="Grand Total"
+                total="$30.60"
+              />
             </View>
           </Pressable>
 
           {/* Print Laser Stitch University banner */}
           <Pressable style={styles.section} onPress={() => WebBrowser.openBrowserAsync('https://printlaserstitchuniversity.com/')}>
             <View style={[styles.vehicleBanner, { borderColor: 'rgba(217, 76, 179, 0.3)' }]}>
+              <Image
+                source={{ uri: `${SITE_ORIGIN}/university-logo.jpeg` }}
+                style={styles.universityImage}
+                contentFit="cover"
+              />
               <Badge text="Learn the craft" />
               <ThemedText type="subtitle" style={styles.vehicleBannerTitle}>
                 Print Laser Stitch University
@@ -278,13 +286,70 @@ function CtaButton({
   onPress: () => void;
 }) {
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => pressed && styles.pressed}>
+    <Pressable onPress={onPress} style={({ pressed }) => [styles.ctaButtonWrapper, pressed && styles.pressed]}>
       <LinearGradient colors={colors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.ctaButton}>
         <ThemedText type="smallBold" style={styles.ctaButtonText}>
           {label}
         </ThemedText>
       </LinearGradient>
     </Pressable>
+  );
+}
+
+function Checklist({ items, color }: { items: string[]; color: string }) {
+  return (
+    <View style={styles.checklist}>
+      {items.map((item) => (
+        <View key={item} style={styles.checklistRow}>
+          <View style={[styles.checklistCheck, { backgroundColor: `${color}33` }]}>
+            <ThemedText style={[styles.checklistCheckMark, { color }]}>✓</ThemedText>
+          </View>
+          <ThemedText type="small" style={styles.checklistText}>
+            {item}
+          </ThemedText>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function SampleQuote({
+  accent,
+  rows,
+  totalLabel,
+  total,
+}: {
+  accent: string;
+  rows: { label: string; value: string }[];
+  totalLabel: string;
+  total: string;
+}) {
+  return (
+    <View style={styles.sampleQuote}>
+      <View style={styles.sampleQuoteHeader}>
+        <View style={[styles.sampleQuoteDot, { backgroundColor: accent }]} />
+        <ThemedText type="small" style={styles.sampleQuoteLabel}>
+          Sample Quote
+        </ThemedText>
+      </View>
+      {rows.map((r) => (
+        <View key={r.label} style={styles.sampleQuoteRow}>
+          <ThemedText type="small" themeColor="textSecondary">
+            {r.label}
+          </ThemedText>
+          <ThemedText type="small" style={styles.sampleQuoteValue}>
+            {r.value}
+          </ThemedText>
+        </View>
+      ))}
+      <View style={styles.sampleQuoteDivider} />
+      <View style={styles.sampleQuoteRow}>
+        <ThemedText type="smallBold">{totalLabel}</ThemedText>
+        <ThemedText type="smallBold" style={{ color: accent }}>
+          {total}
+        </ThemedText>
+      </View>
+    </View>
   );
 }
 
@@ -312,7 +377,11 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
   },
   heroTitle: {
-    lineHeight: 44,
+    fontSize: 34,
+    lineHeight: 38,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 0.2,
   },
   heroSubtitle: {
     lineHeight: 22,
@@ -324,16 +393,31 @@ const styles = StyleSheet.create({
   },
   ctaRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: Spacing.two,
   },
+  ctaButtonWrapper: {
+    flex: 1,
+  },
   ctaButton: {
-    paddingHorizontal: Spacing.four,
+    alignItems: 'center',
+    paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two + 4,
     borderRadius: Spacing.two,
   },
   ctaButtonText: {
     color: '#000000',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  galleryButton: {
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.16)',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    paddingVertical: Spacing.two + 4,
+    borderRadius: Spacing.two,
+  },
+  galleryButtonText: {
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
@@ -347,6 +431,14 @@ const styles = StyleSheet.create({
   sectionTitle: {
     marginTop: Spacing.two,
     marginBottom: Spacing.four,
+    textAlign: 'center',
+    textTransform: 'uppercase',
+    fontSize: 30,
+    lineHeight: 36,
+    fontWeight: '900',
+  },
+  sectionTitleAccent: {
+    color: Brand.cyan,
   },
   centerText: {
     textAlign: 'center',
@@ -381,39 +473,34 @@ const styles = StyleSheet.create({
     color: Brand.cyan,
   },
   stickerBanner: {
+    flexDirection: 'row',
+    minHeight: 160,
     borderRadius: Spacing.four,
     overflow: 'hidden',
+  },
+  stickerBannerText: {
+    flex: 1.2,
     padding: Spacing.four,
-    gap: Spacing.one,
-  },
-  stickerBannerBadge: {
-    alignSelf: 'flex-start',
-    borderRadius: Spacing.five,
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.12)',
-    backgroundColor: 'rgba(255,255,255,0.4)',
-    paddingHorizontal: Spacing.two,
-    paddingVertical: 3,
-    marginBottom: 2,
-  },
-  stickerBannerKicker: {
-    color: '#8a3e00',
-    fontSize: 10,
-    letterSpacing: 1,
+    justifyContent: 'center',
+    gap: 4,
   },
   stickerBannerTitle: {
     color: '#8a3e00',
+    fontSize: 19,
+    lineHeight: 21,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 0.2,
   },
   stickerBannerBody: {
     color: '#8a4a1a',
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 12,
+    lineHeight: 16,
   },
   stickerBannerImage: {
-    width: '100%',
-    aspectRatio: 16 / 9,
+    flex: 1,
+    margin: Spacing.three,
     borderRadius: Spacing.three,
-    marginTop: Spacing.one,
   },
   stickerBannerCta: {
     marginTop: Spacing.two,
@@ -435,44 +522,73 @@ const styles = StyleSheet.create({
   categoryGrid: {
     gap: Spacing.three,
   },
-  categoryCard: {
+  checklist: {
+    gap: Spacing.one,
+  },
+  checklistRow: {
     flexDirection: 'row',
-    minHeight: 140,
-    borderRadius: Spacing.four,
-    overflow: 'hidden',
+    alignItems: 'center',
+    gap: Spacing.two,
   },
-  categoryText: {
-    flex: 1.2,
-    padding: Spacing.three,
-    justifyContent: 'center',
-    gap: 4,
-  },
-  categoryImage: {
-    flex: 1,
-    margin: Spacing.two,
-  },
-  categoryImageFallback: {
-    flex: 1,
-    margin: Spacing.two,
+  checklistCheck: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  categoryImageFallbackEmoji: {
-    fontSize: 44,
-  },
-  shopNowPill: {
-    marginTop: Spacing.one,
-    alignSelf: 'flex-start',
-    borderRadius: Spacing.five,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: 4,
-  },
-  shopNowText: {
-    color: '#ffffff',
+  checklistCheckMark: {
     fontSize: 11,
+    fontWeight: '900',
+  },
+  checklistText: {
+    flex: 1,
+  },
+  sampleQuote: {
+    marginTop: Spacing.two,
+    borderRadius: Spacing.three,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    padding: Spacing.three,
+    gap: Spacing.one + 2,
+  },
+  sampleQuoteHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    marginBottom: 2,
+  },
+  sampleQuoteDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  sampleQuoteLabel: {
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 1,
+    fontSize: 11,
+  },
+  sampleQuoteRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  sampleQuoteValue: {
+    fontWeight: '600',
+  },
+  sampleQuoteDivider: {
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.08)',
+    marginVertical: 2,
+  },
+  universityImage: {
+    width: '100%',
+    aspectRatio: 1,
+    maxHeight: 220,
+    alignSelf: 'center',
+    borderRadius: Spacing.three,
+    marginBottom: Spacing.one,
   },
   vehicleBanner: {
     borderRadius: Spacing.four,
@@ -483,6 +599,11 @@ const styles = StyleSheet.create({
   },
   vehicleBannerTitle: {
     marginTop: Spacing.one,
+    fontSize: 26,
+    lineHeight: 30,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 0.2,
   },
   vehicleBannerBody: {
     lineHeight: 20,

@@ -1,9 +1,8 @@
-import * as Linking from 'expo-linking';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
-import { useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { EMPTY_UPLOAD_SLOT, pickAndUpload, UploadBox, type UploadSlot } from '@/components/template-fit/upload-box';
 import { ScreenBackground } from '@/components/screen-background';
@@ -11,6 +10,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Brand, Spacing } from '@/constants/theme';
 import { useCart } from '@/lib/cart-store';
 import type { VinylStickerCartItem } from '@/lib/cart-types';
+import { setProofBridgeListener } from '@/lib/proof-bridge';
 import {
   MATERIAL_OPTIONS,
   QUANTITY_OPTIONS,
@@ -82,6 +82,25 @@ export default function VinylStickersScreen() {
   const [proof, setProof] = useState<Proof | null>(null);
   const [isViewingProof, setIsViewingProof] = useState(false);
 
+  useEffect(() => {
+    setProofBridgeListener((result) => {
+      if (result.status === 'approved' || result.status === 'changes-requested') {
+        setProof({
+          status: result.status,
+          proofUrl: result.proofUrl,
+          cutlineUrl: result.cutlineUrl,
+          shape: result.shape,
+          borderThickness: result.borderThickness,
+          roundedCorners: result.roundedCorners,
+          removedBackground: result.removedBackground,
+          lowResolution: result.lowResolution,
+          changeNote: result.changeNote,
+        });
+      }
+    });
+    return () => setProofBridgeListener(null);
+  }, []);
+
   function selectShape(s: ShapeKey) {
     setShape(s);
     setProof(null);
@@ -146,28 +165,12 @@ export default function VinylStickersScreen() {
         heightIn: String(heightIn),
         scheme: PROOF_RETURN_SCHEME,
       });
-      const result = await WebBrowser.openAuthSessionAsync(
-        `${SITE_ORIGIN}/mobile-proof?${params.toString()}`,
-        PROOF_RETURN_SCHEME,
-      );
-      if (result.type !== 'success' || !result.url) return;
-      const { queryParams: qp } = Linking.parse(result.url);
-      const status = qp?.status;
-      if (qp && (status === 'approved' || status === 'changes-requested')) {
-        setProof({
-          status,
-          proofUrl: typeof qp.proofUrl === 'string' && qp.proofUrl ? qp.proofUrl : undefined,
-          cutlineUrl: typeof qp.cutlineUrl === 'string' && qp.cutlineUrl ? qp.cutlineUrl : undefined,
-          shape: typeof qp.shape === 'string' ? qp.shape : shape,
-          borderThickness: typeof qp.borderThickness === 'string' ? qp.borderThickness : 'normal',
-          roundedCorners: typeof qp.roundedCorners === 'string' ? qp.roundedCorners : rounded,
-          removedBackground: qp.removedBackground === 'true',
-          lowResolution: qp.lowResolution === 'true',
-          changeNote: typeof qp.changeNote === 'string' ? qp.changeNote : undefined,
-        });
-      } else if (status !== 'cancelled') {
-        Alert.alert('Proof not saved', 'Something went wrong generating the proof — please try again.');
-      }
+      // Plain in-app browser, not an auth session: the redirect is caught by
+      // the vinyl-stickers-proof route (via proof-bridge) instead of relying
+      // on openAuthSessionAsync's native redirect interception, which was
+      // unreliable on Android and fell through to expo-router's own
+      // deep-link handling (showing "Unmatched Route").
+      await WebBrowser.openBrowserAsync(`${SITE_ORIGIN}/mobile-proof?${params.toString()}`);
     } finally {
       setIsViewingProof(false);
     }
@@ -429,8 +432,8 @@ export default function VinylStickersScreen() {
                 : !upload.fileUrl
                   ? 'Upload Artwork to Continue'
                   : needsProof && !proof
-                    ? `View Proof · $${price.total.toFixed(2)}`
-                    : `Add to Cart · $${price.total.toFixed(2)}`}
+                    ? `View Proof · $${(price.perUnit * orderQty).toFixed(2)}`
+                    : `Add to Cart · $${(price.perUnit * orderQty).toFixed(2)}`}
             </ThemedText>
           )}
         </Pressable>

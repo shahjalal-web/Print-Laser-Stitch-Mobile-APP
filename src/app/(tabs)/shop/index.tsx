@@ -1,18 +1,19 @@
-import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet } from 'react-native';
+import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { CategoryCard } from '@/components/category-card';
 import { ScreenBackground } from '@/components/screen-background';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useApiQuery } from '@/lib/api-cache';
+import { themeForCategory } from '@/lib/category-themes';
 
 type Collection = {
   id: string;
   handle: string;
   title: string;
+  description: string;
   image: { url: string; altText: string | null } | null;
   productsCount: number;
 };
@@ -43,29 +44,18 @@ export default function ShopScreen() {
         <FlatList
           data={collections}
           keyExtractor={(item) => item.id}
-          numColumns={2}
-          columnWrapperStyle={styles.row}
           contentContainerStyle={styles.list}
           refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={refetch} />}
-          renderItem={({ item }) => (
-            <Pressable
-              style={styles.card}
-              onPress={() => router.push({ pathname: '/shop/[handle]', params: { handle: item.handle } })}>
-              <ThemedView type="backgroundElement" style={styles.imageWrap}>
-                {item.image ? (
-                  <Image source={{ uri: item.image.url }} style={styles.image} contentFit="cover" />
-                ) : (
-                  <ThemedText style={styles.imageFallback}>🗂️</ThemedText>
-                )}
-              </ThemedView>
-              <ThemedText type="smallBold" numberOfLines={1} style={styles.title}>
-                {item.title}
-              </ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">
-                {item.productsCount} {item.productsCount === 1 ? 'product' : 'products'}
-              </ThemedText>
-            </Pressable>
+          renderItem={({ item, index }) => (
+            <CategoryCard
+              title={item.title}
+              description={item.description}
+              imageUrl={item.image?.url}
+              theme={themeForCategory(item.handle, index)}
+              onPress={() => router.push({ pathname: '/shop/[handle]', params: { handle: item.handle } })}
+            />
           )}
+          ItemSeparatorComponent={() => <View style={styles.separator} />}
         />
       </SafeAreaView>
     </ScreenBackground>
@@ -77,30 +67,9 @@ const styles = StyleSheet.create({
   centerFlex: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.four },
   list: {
     padding: Spacing.four,
-    gap: Spacing.three,
   },
-  row: {
-    gap: Spacing.three,
-  },
-  card: {
-    flex: 1,
-    gap: Spacing.one,
-  },
-  imageWrap: {
-    aspectRatio: 1,
-    borderRadius: Spacing.three,
-    overflow: 'hidden',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  image: {
-    width: '100%',
-    height: '100%',
-  },
-  imageFallback: {
-    fontSize: 40,
-  },
-  title: {
-    marginTop: Spacing.one,
+  separator: {
+    height: Spacing.three,
+    backgroundColor: 'transparent',
   },
 });

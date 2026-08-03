@@ -11,12 +11,43 @@ import { ThemedView } from '@/components/themed-view';
 import { Brand, Spacing } from '@/constants/theme';
 import { api, ApiError } from '@/lib/api';
 import { useCart } from '@/lib/cart-store';
+import type { CartDiscount } from '@/lib/discount-types';
 
 export default function CartScreen() {
-  const { items, itemCount, total, updateQty, removeItem, isHydrated } = useCart();
+  const { items, itemCount, subtotal, discount, discountAmount, total, updateQty, removeItem, applyDiscount, clearDiscount, isHydrated } =
+    useCart();
   const [email, setEmail] = useState('');
   const [checkingOut, setCheckingOut] = useState(false);
+  const [discountCode, setDiscountCode] = useState('');
+  const [applyingDiscount, setApplyingDiscount] = useState(false);
+  const [discountError, setDiscountError] = useState<string | null>(null);
   const insets = useSafeAreaInsets();
+
+  async function handleApplyDiscount() {
+    setDiscountError(null);
+    const trimmed = discountCode.trim();
+    if (!trimmed) {
+      setDiscountError('Enter a code first.');
+      return;
+    }
+    setApplyingDiscount(true);
+    try {
+      const res = await api.post<{ ok?: boolean; discount?: CartDiscount }>('/api/discount/validate', {
+        code: trimmed,
+        subtotal,
+      });
+      if (!res.discount) {
+        setDiscountError('Could not apply that code.');
+        return;
+      }
+      applyDiscount(res.discount);
+      setDiscountCode('');
+    } catch (err) {
+      setDiscountError(err instanceof ApiError ? err.message : 'Could not apply that code.');
+    } finally {
+      setApplyingDiscount(false);
+    }
+  }
 
   async function handleCheckout() {
     const trimmed = email.trim().toLowerCase();
@@ -29,6 +60,7 @@ export default function CartScreen() {
       const res = await api.post<{ invoiceUrl: string }>('/api/checkout-cart', {
         items,
         email: trimmed,
+        discountCode: discount?.code ?? null,
       });
       await WebBrowser.openBrowserAsync(res.invoiceUrl);
     } catch (err) {
@@ -120,6 +152,82 @@ export default function CartScreen() {
             <ThemedText type="smallBold">
               {itemCount} {itemCount === 1 ? 'item' : 'items'}
             </ThemedText>
+            <ThemedText type="small" themeColor="textSecondary">
+              ${subtotal.toFixed(2)}
+            </ThemedText>
+          </View>
+
+          {discount && discountAmount > 0 && (
+            <View style={styles.totalRow}>
+              <View style={styles.discountBadgeRow}>
+                <ThemedText type="small" style={styles.discountLabel}>
+                  Discount
+                </ThemedText>
+                <View style={styles.discountCodeChip}>
+                  <ThemedText type="small" style={styles.discountCodeChipText}>
+                    {discount.code}
+                  </ThemedText>
+                </View>
+              </View>
+              <ThemedText type="small" style={styles.discountLabel}>
+                −${discountAmount.toFixed(2)}
+              </ThemedText>
+            </View>
+          )}
+
+          {discount && discount.scope === 'vinyl-sticker' && discountAmount === 0 && !items.some((i) => i.kind === 'vinyl-sticker') && (
+            <View style={styles.discountWarning}>
+              <ThemedText type="small" style={styles.discountWarningText}>
+                {discount.code} only applies to Custom Vinyl Stickers — add one to your cart to use it.
+              </ThemedText>
+            </View>
+          )}
+
+          {discount ? (
+            <View style={styles.discountApplied}>
+              <ThemedText type="small" style={styles.discountAppliedText} numberOfLines={1}>
+                ✓ {discount.code} applied
+              </ThemedText>
+              <Pressable onPress={clearDiscount}>
+                <ThemedText type="small" style={styles.discountRemoveText}>
+                  Remove
+                </ThemedText>
+              </Pressable>
+            </View>
+          ) : (
+            <View style={styles.discountRow}>
+              <TextInput
+                value={discountCode}
+                onChangeText={(t) => setDiscountCode(t.toUpperCase())}
+                placeholder="Discount code"
+                placeholderTextColor="rgba(255,255,255,0.4)"
+                autoCapitalize="characters"
+                autoCorrect={false}
+                editable={!applyingDiscount}
+                style={styles.discountInput}
+              />
+              <Pressable
+                style={[styles.discountApplyButton, applyingDiscount && styles.checkoutButtonDisabled]}
+                disabled={applyingDiscount || !discountCode.trim()}
+                onPress={handleApplyDiscount}>
+                {applyingDiscount ? (
+                  <ActivityIndicator color={Brand.cyan} size="small" />
+                ) : (
+                  <ThemedText type="small" style={styles.discountApplyText}>
+                    Apply
+                  </ThemedText>
+                )}
+              </Pressable>
+            </View>
+          )}
+          {discountError && (
+            <ThemedText type="small" style={styles.discountErrorText}>
+              {discountError}
+            </ThemedText>
+          )}
+
+          <View style={[styles.totalRow, styles.grandTotalRow]}>
+            <ThemedText type="smallBold">Total</ThemedText>
             <ThemedText type="subtitle" style={{ color: Brand.cyan }}>
               ${total.toFixed(2)}
             </ThemedText>
@@ -222,6 +330,91 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  grandTotalRow: {
+    marginTop: Spacing.one,
+    paddingTop: Spacing.two,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.08)',
+  },
+  discountBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
+  },
+  discountLabel: {
+    color: '#6ee7b7',
+  },
+  discountCodeChip: {
+    borderRadius: 999,
+    backgroundColor: 'rgba(52,211,153,0.15)',
+    paddingHorizontal: Spacing.one,
+    paddingVertical: 1,
+  },
+  discountCodeChipText: {
+    color: '#6ee7b7',
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  discountWarning: {
+    borderRadius: Spacing.two,
+    backgroundColor: 'rgba(245,158,11,0.1)',
+    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.one,
+  },
+  discountWarningText: {
+    color: '#fcd34d',
+  },
+  discountRow: {
+    flexDirection: 'row',
+    gap: Spacing.two,
+  },
+  discountInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.16)',
+    borderRadius: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+    color: '#f5f5f5',
+    textTransform: 'uppercase',
+  },
+  discountApplyButton: {
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.16)',
+    borderRadius: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  discountApplyText: {
+    color: '#f5f5f5',
+    textTransform: 'uppercase',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  discountApplied: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: 'rgba(52,211,153,0.3)',
+    backgroundColor: 'rgba(52,211,153,0.1)',
+    borderRadius: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+  },
+  discountAppliedText: {
+    color: '#6ee7b7',
+    fontWeight: '600',
+    flexShrink: 1,
+  },
+  discountRemoveText: {
+    color: '#6ee7b7',
+    fontWeight: '600',
+  },
+  discountErrorText: {
+    color: '#fca5a5',
   },
   emailInput: {
     borderWidth: 1,
