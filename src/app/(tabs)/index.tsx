@@ -6,6 +6,7 @@ import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, V
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CategoryCard } from '@/components/category-card';
+import { GradientText } from '@/components/gradient-text';
 import { FixedTopBar } from '@/components/menu-button';
 import { ScreenBackground } from '@/components/screen-background';
 import { ThemedText } from '@/components/themed-text';
@@ -42,9 +43,17 @@ export default function HomeScreen() {
           {/* Hero */}
           <View style={styles.hero}>
             <Badge text="We print · We engrave · We stitch" />
-            <ThemedText type="title" style={styles.heroTitle}>
-              Bringing your <ThemedText style={[styles.heroTitle, { color: Brand.yellow }]}>vision</ThemedText> to life.
-            </ThemedText>
+            <View style={styles.heroTitleRow}>
+              <ThemedText type="title" style={styles.heroTitle}>
+                Bringing your{' '}
+              </ThemedText>
+              <GradientText colors={[Brand.yellow, Brand.cyan]} style={styles.heroTitle}>
+                vision
+              </GradientText>
+              <ThemedText type="title" style={styles.heroTitle}>
+                {' '}to life.
+              </ThemedText>
+            </View>
             <ThemedText themeColor="textSecondary" style={styles.heroSubtitle}>
               Premium custom printing, laser engraving and stitching — built for businesses, creators and car
               enthusiasts. From vinyl stickers to embroidered polos, we print, stitch or etch it for you.
@@ -73,7 +82,7 @@ export default function HomeScreen() {
             <View style={styles.stickerBanner}>
               <LinearGradient
                 colors={['#ffb366', '#ffb366', '#ff8c1a', '#ff8c1a']}
-                locations={[0, 0.35, 0.4, 1]}
+                locations={[0, 0.379, 0.381, 1]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0.9 }}
                 style={StyleSheet.absoluteFill}
@@ -101,9 +110,14 @@ export default function HomeScreen() {
           {/* Category grid */}
           <View style={styles.section}>
             <Badge text="Make your selection" center />
-            <ThemedText type="subtitle" style={styles.sectionTitle}>
-              WHAT CAN WE <ThemedText type="subtitle" style={[styles.sectionTitle, styles.sectionTitleAccent]}>MAKE FOR YOU?</ThemedText>
-            </ThemedText>
+            <View style={styles.sectionTitleRow}>
+              <ThemedText type="subtitle" style={styles.sectionTitle}>
+                WHAT CAN WE{' '}
+              </ThemedText>
+              <GradientText colors={[Brand.yellow, Brand.cyan]} style={styles.sectionTitle}>
+                MAKE FOR YOU?
+              </GradientText>
+            </View>
             <ThemedText themeColor="textSecondary" style={styles.categoryIntro}>
               {collections
                 ? `${collections.length} categories — pick one to see every product inside.`
@@ -137,9 +151,14 @@ export default function HomeScreen() {
           <Pressable style={styles.section} onPress={() => router.push('/vehicle-stickers')}>
             <View style={styles.vehicleBanner}>
               <Badge text="Vehicle-specific decal kits" />
-              <ThemedText type="subtitle" style={styles.vehicleBannerTitle}>
-                Custom Vehicle Sticker Kits
-              </ThemedText>
+              <View style={styles.bannerTitleRow}>
+                <ThemedText type="subtitle" style={styles.vehicleBannerTitle}>
+                  Custom Vehicle{' '}
+                </ThemedText>
+                <GradientText colors={[Brand.cyan, Brand.yellow]} style={styles.vehicleBannerTitle}>
+                  Sticker Kits
+                </GradientText>
+              </View>
               <ThemedText themeColor="textSecondary" style={styles.vehicleBannerBody}>
                 Pick your make, model and year — see decal sets cut perfectly for your exact vehicle. Hood sets,
                 bedsides, full kits and more.
@@ -162,9 +181,14 @@ export default function HomeScreen() {
           <Pressable style={styles.section} onPress={() => router.push('/decal-quote')}>
             <View style={styles.vehicleBanner}>
               <Badge text="Window film · Wall vinyl" />
-              <ThemedText type="subtitle" style={styles.vehicleBannerTitle}>
-                Quick Quote Calculator
-              </ThemedText>
+              <View style={styles.bannerTitleRow}>
+                <ThemedText type="subtitle" style={styles.vehicleBannerTitle}>
+                  Quick Quote{' '}
+                </ThemedText>
+                <GradientText colors={[Brand.cyan, Brand.yellow]} style={styles.vehicleBannerTitle}>
+                  Calculator
+                </GradientText>
+              </View>
               <ThemedText themeColor="textSecondary" style={styles.vehicleBannerBody}>
                 Add panels for doors, windows, walls, wood or metal — pick a vinyl material and get instant pricing
                 with 7% Martin County tax included.
@@ -196,9 +220,14 @@ export default function HomeScreen() {
           <Pressable style={styles.section} onPress={() => router.push('/signage-quotes')}>
             <View style={[styles.vehicleBanner, { borderColor: 'rgba(217, 240, 0, 0.3)' }]}>
               <Badge text="Print & install quote generator" />
-              <ThemedText type="subtitle" style={styles.vehicleBannerTitle}>
-                Decal Signage Calculator
-              </ThemedText>
+              <View style={styles.bannerTitleRow}>
+                <ThemedText type="subtitle" style={styles.vehicleBannerTitle}>
+                  Decal Signage{' '}
+                </ThemedText>
+                <GradientText colors={[Brand.yellow, Brand.magenta]} style={styles.vehicleBannerTitle}>
+                  Calculator
+                </GradientText>
+              </View>
               <ThemedText themeColor="textSecondary" style={styles.vehicleBannerBody}>
                 Enter width and length, pick a service tier (Print Only, Design &amp; Print, or Full Install), and
                 get an instant quote.
@@ -235,9 +264,14 @@ export default function HomeScreen() {
                 contentFit="cover"
               />
               <Badge text="Learn the craft" />
-              <ThemedText type="subtitle" style={styles.vehicleBannerTitle}>
-                Print Laser Stitch University
-              </ThemedText>
+              <View style={styles.bannerTitleRow}>
+                <ThemedText type="subtitle" style={styles.vehicleBannerTitle}>
+                  Print Laser Stitch{' '}
+                </ThemedText>
+                <GradientText colors={[Brand.magenta, Brand.cyan]} style={styles.vehicleBannerTitle}>
+                  University
+                </GradientText>
+              </View>
               <ThemedText themeColor="textSecondary" style={styles.vehicleBannerBody}>
                 Want to sharpen your design and print skills? Step into our learning hub for tutorials, walkthroughs
                 and courses from the Print Laser Stitch team.
@@ -288,7 +322,7 @@ function CtaButton({
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.ctaButtonWrapper, pressed && styles.pressed]}>
       <LinearGradient colors={colors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.ctaButton}>
-        <ThemedText type="smallBold" style={styles.ctaButtonText}>
+        <ThemedText type="smallBold" style={styles.ctaButtonText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
           {label}
         </ThemedText>
       </LinearGradient>
@@ -376,6 +410,11 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.four,
     gap: Spacing.three,
   },
+  heroTitleRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+  },
   heroTitle: {
     fontSize: 34,
     lineHeight: 38,
@@ -400,14 +439,14 @@ const styles = StyleSheet.create({
   },
   ctaButton: {
     alignItems: 'center',
-    paddingHorizontal: Spacing.three,
+    paddingHorizontal: Spacing.two,
     paddingVertical: Spacing.two + 4,
     borderRadius: Spacing.two,
   },
   ctaButtonText: {
     color: '#000000',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.2,
   },
   galleryButton: {
     alignItems: 'center',
@@ -428,6 +467,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.four,
     paddingTop: Spacing.six,
   },
+  sectionTitleRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   sectionTitle: {
     marginTop: Spacing.two,
     marginBottom: Spacing.four,
@@ -436,9 +481,6 @@ const styles = StyleSheet.create({
     fontSize: 30,
     lineHeight: 36,
     fontWeight: '900',
-  },
-  sectionTitleAccent: {
-    color: Brand.cyan,
   },
   centerText: {
     textAlign: 'center',
@@ -596,6 +638,11 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(24, 211, 232, 0.3)',
     padding: Spacing.four,
     gap: Spacing.two,
+  },
+  bannerTitleRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
   },
   vehicleBannerTitle: {
     marginTop: Spacing.one,

@@ -27,7 +27,7 @@ export function CategoryCard({
     <Pressable style={styles.card} onPress={onPress}>
       <LinearGradient
         colors={[theme.base, theme.base, theme.diagonal, theme.diagonal]}
-        locations={[0, 0.35, 0.4, 1]}
+        locations={[0, 0.379, 0.381, 1]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0.9 }}
         style={StyleSheet.absoluteFill}
@@ -37,7 +37,7 @@ export function CategoryCard({
           {title}
         </ThemedText>
         {!!description && (
-          <ThemedText type="small" numberOfLines={2} style={{ color: theme.desc }}>
+          <ThemedText numberOfLines={2} style={[styles.description, { color: theme.desc }]}>
             {description}
           </ThemedText>
         )}
@@ -76,10 +76,15 @@ const styles = StyleSheet.create({
   },
   heading: {
     fontSize: 18,
-    lineHeight: 21,
+    lineHeight: 17,
     fontWeight: '900',
     textTransform: 'uppercase',
-    letterSpacing: 0.3,
+    letterSpacing: -0.3,
+  },
+  description: {
+    fontSize: 11,
+    lineHeight: 16,
+    fontWeight: '500',
   },
   image: {
     flex: 1,

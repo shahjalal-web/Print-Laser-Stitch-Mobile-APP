@@ -13,16 +13,17 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { ExpandableText } from '@/components/expandable-text';
 import { QuantityStepper } from '@/components/quantity-stepper';
 import { ScreenBackground } from '@/components/screen-background';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { EMPTY_UPLOAD_SLOT, pickAndUpload, UploadBox, type UploadSlot } from '@/components/template-fit/upload-box';
-import { Brand, Spacing } from '@/constants/theme';
+import { BottomTabInset, Brand, Spacing } from '@/constants/theme';
 import { useApiQuery } from '@/lib/api-cache';
 import { useCart } from '@/lib/cart-store';
+import { colorHex, isColorOptionName } from '@/lib/colors';
 import { downloadAndShareBlankTemplate } from '@/lib/template-fit/blank-template';
 import { HOW_TO_ORDER_VIDEO_IDS } from '@/lib/how-to-order-videos';
 import { BLEED_IN } from '@/lib/template-fit/constants';
@@ -98,6 +99,12 @@ export default function ProductScreen() {
   const loadFailed = !isLoading && !product && !!loadError;
   const [selected, setSelected] = useState<Record<string, string>>({});
   const [sizeQuantities, setSizeQuantities] = useState<Record<string, number>>({});
+  // Multi-color mode: every color's quantities live in colorSizeQty (so
+  // switching colors never loses what was already entered), but only
+  // `activeColor`'s size×qty matrix is shown at a time — better fit for a
+  // phone screen than the website's "every added color stays open" layout.
+  const [activeColor, setActiveColor] = useState<string | null>(null);
+  const [colorSizeQty, setColorSizeQty] = useState<Record<string, Record<string, number>>>({});
   const [quantity, setQuantity] = useState(1);
   const [frontUpload, setFrontUpload] = useState<UploadSlot>(EMPTY_UPLOAD_SLOT);
   const [backUpload, setBackUpload] = useState<UploadSlot>(EMPTY_UPLOAD_SLOT);
@@ -117,6 +124,14 @@ export default function ProductScreen() {
     () => (sizeOption ? hasApparelSizes(sizeOption.values) : false),
     [sizeOption],
   );
+  // Apparel with a Color option gets a "pick your colors" matrix — one
+  // size×quantity grid per chosen color — instead of a single-pick Color
+  // chip, mirroring the website's TShirtConfigurator multi-color mode.
+  const colorOption = useMemo(
+    () => product?.options.find((o) => isColorOptionName(o.name)) ?? null,
+    [product],
+  );
+  const multiColor = isApparel && !!colorOption;
   const hasQuantityVariantOption = useMemo(
     () => product?.options.some((o) => isQuantityOptionName(o.name)) ?? false,
     [product],
@@ -143,6 +158,8 @@ export default function ProductScreen() {
       setSelected(initial);
     }
     setSizeQuantities({});
+    setActiveColor(null);
+    setColorSizeQty({});
     const fromTitle = detectMinQuantityFromTitle(product.title);
     setQuantity(fromTitle ?? 1);
   }, [product, navigation, handle]);
@@ -167,10 +184,58 @@ export default function ProductScreen() {
     );
   }
 
-  const totalSizeQuantity = useMemo(
-    () => Object.values(sizeQuantities).reduce((sum, n) => sum + n, 0),
-    [sizeQuantities],
-  );
+  // Exact (color, size) match first; if this color has no SKU at this size
+  // (e.g. sold out combination), fall back to any variant at that size so
+  // there's still a variant_id to attach the line to.
+  function findVariantForColorSize(color: string, size: string) {
+    if (!product || !sizeOption || !colorOption) return null;
+    const exact = product.variants.find((v) =>
+      v.selectedOptions.every((o) => {
+        if (o.name === sizeOption.name) return o.value === size;
+        if (o.name === colorOption.name) return o.value === color;
+        return selected[o.name] === o.value;
+      }),
+    );
+    if (exact) return exact;
+    const looseMatches = product.variants.filter((v) =>
+      v.selectedOptions.every((o) => {
+        if (o.name === sizeOption.name) return o.value === size;
+        if (o.name === colorOption.name) return true;
+        return selected[o.name] === o.value;
+      }),
+    );
+    return looseMatches.find((v) => v.availableForSale) ?? looseMatches[0] ?? null;
+  }
+
+  function selectColor(color: string) {
+    setActiveColor(color);
+    setColorSizeQty((prev) =>
+      prev[color] ? prev : { ...prev, [color]: Object.fromEntries((sizeOption?.values ?? []).map((s) => [s, 0])) },
+    );
+  }
+  function setColorSize(color: string, size: string, n: number) {
+    setColorSizeQty((prev) => ({ ...prev, [color]: { ...(prev[color] ?? {}), [size]: Math.max(0, n) } }));
+  }
+
+  // Flattened (color, size, qty, variant) lines for the multi-color matrix.
+  const colorLines = useMemo(() => {
+    if (!multiColor) return [];
+    const lines: Array<{ color: string; size: string; qty: number; price: number }> = [];
+    for (const [color, sizes] of Object.entries(colorSizeQty)) {
+      for (const [size, qty] of Object.entries(sizes)) {
+        if (qty <= 0) continue;
+        const v = findVariantForColorSize(color, size);
+        lines.push({ color, size, qty, price: v ? Number(v.price) : 0 });
+      }
+    }
+    return lines;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [multiColor, colorSizeQty, selected, product?.variants]);
+
+  const totalSizeQuantity = useMemo(() => {
+    if (multiColor) return colorLines.reduce((sum, l) => sum + l.qty, 0);
+    return Object.values(sizeQuantities).reduce((sum, n) => sum + n, 0);
+  }, [multiColor, colorLines, sizeQuantities]);
 
   const images = useMemo(() => {
     if (!product) return [];
@@ -194,15 +259,17 @@ export default function ProductScreen() {
   const anyUploading = frontUpload.isUploading || backUpload.isUploading;
   const willUseTemplateFit = !!detection?.templateFitEnabled && !!detection.sizeInches;
 
-  const orderTotal = isApparel
-    ? Object.entries(sizeQuantities).reduce((sum, [size, qty]) => {
-        if (qty <= 0) return sum;
-        const v = findVariantForSize(size);
-        return v ? sum + Number(v.price) * qty : sum;
-      }, 0)
-    : activeVariant
-      ? Number(activeVariant.price) * quantity
-      : 0;
+  const orderTotal = multiColor
+    ? colorLines.reduce((sum, l) => sum + l.price * l.qty, 0)
+    : isApparel
+      ? Object.entries(sizeQuantities).reduce((sum, [size, qty]) => {
+          if (qty <= 0) return sum;
+          const v = findVariantForSize(size);
+          return v ? sum + Number(v.price) * qty : sum;
+        }, 0)
+      : activeVariant
+        ? Number(activeVariant.price) * quantity
+        : 0;
 
   const qtyOk = isApparel
     ? totalSizeQuantity >= minQuantity
@@ -235,6 +302,46 @@ export default function ProductScreen() {
   function handleAddToCart() {
     if (!product || !canCheckout) return;
     const extraProperties = buildExtraProperties();
+
+    if (multiColor && sizeOption && colorOption) {
+      for (const [color, sizes] of Object.entries(colorSizeQty)) {
+        for (const [size, qty] of Object.entries(sizes)) {
+          if (qty <= 0) continue;
+          const variant = findVariantForColorSize(color, size);
+          if (!variant) {
+            Alert.alert('Missing variant', `No variant found for ${color} / ${size}.`);
+            return;
+          }
+          const unitPrice = Number(variant.price);
+          addItem({
+            kind: 'product',
+            variantId: variant.id,
+            productTitle: product.title,
+            title: product.title,
+            subtitle: [
+              ...Object.entries(selected)
+                .filter(([k]) => k !== sizeOption.name && k !== colorOption.name)
+                .map(([k, v]) => `${k}: ${v}`),
+              `${colorOption.name}: ${color}`,
+              `${sizeOption.name}: ${size}`,
+            ].join(' · '),
+            thumbnail: images[0] ?? '',
+            unitLabel: `$${unitPrice.toFixed(2)} each`,
+            selectedOptions: { ...selected, [colorOption.name]: color, [sizeOption.name]: size },
+            qty,
+            quantity: qty,
+            unitPrice,
+            totalPrice: Math.round(unitPrice * qty * 100) / 100,
+            extraProperties,
+          });
+        }
+      }
+      Alert.alert('Added to cart', `${product.title} — ${totalSizeQuantity} pcs`, [
+        { text: 'Keep Shopping', style: 'cancel' },
+        { text: 'View Cart', onPress: () => router.push('/cart') },
+      ]);
+      return;
+    }
 
     if (isApparel && sizeOption) {
       const lines = Object.entries(sizeQuantities).filter(([, qty]) => qty > 0);
@@ -440,6 +547,7 @@ export default function ProductScreen() {
 
         {product.options
           .filter((opt) => !(isApparel && sizeOption && opt.id === sizeOption.id))
+          .filter((opt) => !(multiColor && colorOption && opt.id === colorOption.id))
           .map((opt) => (
             <View key={opt.id} style={styles.optionGroup}>
               <ThemedText type="smallBold" style={styles.optionLabel}>
@@ -466,7 +574,84 @@ export default function ProductScreen() {
             </View>
           ))}
 
-        {isApparel && sizeOption && (
+        {multiColor && colorOption && sizeOption && (
+          <View style={styles.optionGroup}>
+            <View style={styles.sizeSectionHeader}>
+              <ThemedText type="smallBold" style={styles.optionLabel}>
+                {colorOption.name}
+              </ThemedText>
+              <ThemedText
+                type="small"
+                themeColor={totalSizeQuantity >= minQuantity ? 'textSecondary' : undefined}
+                style={!(totalSizeQuantity >= minQuantity) ? styles.qtyWarningText : undefined}>
+                {totalSizeQuantity} / min {minQuantity}
+              </ThemedText>
+            </View>
+            <ThemedText type="small" themeColor="textSecondary">
+              Pick a color, set a quantity per size, then pick another color to add more.
+            </ThemedText>
+            <View style={styles.swatchRow}>
+              {colorOption.values.map((color) => {
+                const isActive = activeColor === color;
+                const colorQty = Object.values(colorSizeQty[color] ?? {}).reduce((a, b) => a + b, 0);
+                return (
+                  <Pressable key={color} onPress={() => selectColor(color)} style={styles.swatchItem}>
+                    <View style={[styles.swatch, { backgroundColor: colorHex(color) ?? '#888' }, isActive && styles.swatchActive]}>
+                      {colorQty > 0 && <ThemedText style={styles.swatchCheck}>✓</ThemedText>}
+                    </View>
+                    <ThemedText type="small" numberOfLines={1} style={styles.swatchLabel}>
+                      {color}
+                      {colorQty > 0 ? ` (${colorQty})` : ''}
+                    </ThemedText>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            {activeColor && (
+              <View style={styles.colorBlock}>
+                <View style={styles.colorBlockHeader}>
+                  <View style={styles.swatchItem}>
+                    <View style={[styles.swatch, styles.swatchSmall, { backgroundColor: colorHex(activeColor) ?? '#888' }]} />
+                    <ThemedText type="smallBold">{activeColor}</ThemedText>
+                  </View>
+                </View>
+                <View style={styles.sizeMatrix}>
+                  {sizeOption.values.map((size) => {
+                    const variant = findVariantForColorSize(activeColor, size);
+                    const qty = colorSizeQty[activeColor]?.[size] ?? 0;
+                    return (
+                      <View key={size} style={styles.sizeRow}>
+                        <View style={styles.sizeRowLabel}>
+                          <ThemedText type="smallBold">{size}</ThemedText>
+                          {!!variant && (
+                            <ThemedText type="small" themeColor="textSecondary">
+                              ${Number(variant.price).toFixed(2)}
+                            </ThemedText>
+                          )}
+                        </View>
+                        <QuantityStepper
+                          value={qty}
+                          min={0}
+                          disabled={!variant?.availableForSale}
+                          onChange={(n) => setColorSize(activeColor, size, n)}
+                        />
+                      </View>
+                    );
+                  })}
+                </View>
+              </View>
+            )}
+
+            {totalSizeQuantity > 0 && totalSizeQuantity < minQuantity && (
+              <ThemedText type="small" style={styles.qtyWarningText}>
+                Add {minQuantity - totalSizeQuantity} more to reach the minimum order of {minQuantity}.
+              </ThemedText>
+            )}
+          </View>
+        )}
+
+        {isApparel && !multiColor && sizeOption && (
           <View style={styles.optionGroup}>
             <View style={styles.sizeSectionHeader}>
               <ThemedText type="smallBold" style={styles.optionLabel}>
@@ -518,9 +703,9 @@ export default function ProductScreen() {
         )}
 
         {!!product.descriptionHtml && (
-          <ThemedText themeColor="textSecondary" style={styles.description}>
-            {stripHtml(product.descriptionHtml)}
-          </ThemedText>
+          <View style={styles.description}>
+            <ExpandableText text={stripHtml(product.descriptionHtml)} style={styles.descriptionText} />
+          </View>
         )}
 
         {detection?.templateFitEnabled && (
@@ -616,47 +801,48 @@ export default function ProductScreen() {
           />
         </View>
 
-      </ScrollView>
-
-      <SafeAreaView edges={['bottom']} style={styles.bottomBar}>
-        <View style={styles.bottomBarSummary}>
-          <ThemedText type="small" themeColor="textSecondary">
-            {isApparel ? `${totalSizeQuantity} pcs` : `Qty ${quantity}`}
-          </ThemedText>
-          <ThemedText type="smallBold">${orderTotal.toFixed(2)}</ThemedText>
-        </View>
-        <Pressable
-          style={[
-            styles.cartButton,
-            (!canCheckout || (!isApparel && activeVariant && !activeVariant.availableForSale)) &&
-              styles.cartButtonDisabled,
-          ]}
-          disabled={!canCheckout || (!isApparel && (!activeVariant || !activeVariant.availableForSale))}
-          onPress={willUseTemplateFit ? handleContinueToTemplateFit : handleAddToCart}>
-          {anyUploading ? (
-            <ActivityIndicator color="#000" />
-          ) : (
-            <ThemedText type="smallBold" style={styles.cartButtonText}>
-              {isApparel && totalSizeQuantity < minQuantity
-                ? totalSizeQuantity === 0
-                  ? `Select sizes (min ${minQuantity})`
-                  : `Add ${minQuantity - totalSizeQuantity} more to reach min ${minQuantity}`
-                : !isApparel && activeVariant && !activeVariant.availableForSale
-                  ? 'Unavailable'
-                  : !frontReady || !backReady
-                    ? `Upload ${needsFront && needsBack ? 'both designs' : 'your design'} to continue`
-                    : willUseTemplateFit
-                      ? 'Continue →'
-                      : 'Add to Cart'}
+        <View style={styles.bottomBar}>
+          {(!isApparel || totalSizeQuantity > 0) && (
+            <View style={styles.bottomBarSummary}>
+              <ThemedText type="small" themeColor="textSecondary">
+                {isApparel ? `${totalSizeQuantity} pcs` : `Qty ${quantity}`}
+              </ThemedText>
+              <ThemedText type="smallBold">${orderTotal.toFixed(2)}</ThemedText>
+            </View>
+          )}
+          <Pressable
+            style={[
+              styles.cartButton,
+              (!canCheckout || (!isApparel && activeVariant && !activeVariant.availableForSale)) &&
+                styles.cartButtonDisabled,
+            ]}
+            disabled={!canCheckout || (!isApparel && (!activeVariant || !activeVariant.availableForSale))}
+            onPress={willUseTemplateFit ? handleContinueToTemplateFit : handleAddToCart}>
+            {anyUploading ? (
+              <ActivityIndicator color="#000" />
+            ) : (
+              <ThemedText type="smallBold" style={styles.cartButtonText}>
+                {isApparel && totalSizeQuantity < minQuantity
+                  ? totalSizeQuantity === 0
+                    ? `Select sizes (min ${minQuantity})`
+                    : `Add ${minQuantity - totalSizeQuantity} more to reach min ${minQuantity}`
+                  : !isApparel && activeVariant && !activeVariant.availableForSale
+                    ? 'Unavailable'
+                    : !frontReady || !backReady
+                      ? `Upload ${needsFront && needsBack ? 'both designs' : 'your design'} to continue`
+                      : willUseTemplateFit
+                        ? 'Continue →'
+                        : 'Add to Cart'}
+              </ThemedText>
+            )}
+          </Pressable>
+          {willUseTemplateFit && (
+            <ThemedText type="small" themeColor="textSecondary" style={styles.continueHint}>
+              Next, you&apos;ll fit your design onto the print template.
             </ThemedText>
           )}
-        </Pressable>
-        {willUseTemplateFit && (
-          <ThemedText type="small" themeColor="textSecondary" style={styles.continueHint}>
-            Next, you&apos;ll fit your design onto the print template.
-          </ThemedText>
-        )}
-      </SafeAreaView>
+        </View>
+      </ScrollView>
     </ScreenBackground>
   );
 }
@@ -720,12 +906,12 @@ const styles = StyleSheet.create({
     fontSize: 20,
   },
   bottomBar: {
+    marginTop: Spacing.four,
     borderTopWidth: 1,
     borderTopColor: 'rgba(255,255,255,0.1)',
-    backgroundColor: 'rgba(10,10,10,0.97)',
     paddingHorizontal: Spacing.four,
     paddingTop: Spacing.three,
-    paddingBottom: Spacing.two,
+    paddingBottom: BottomTabInset + Spacing.three,
   },
   bottomBarSummary: {
     flexDirection: 'row',
@@ -782,6 +968,57 @@ const styles = StyleSheet.create({
   },
   sizeRowLabel: { gap: 2 },
   qtyWarningText: { color: Brand.magenta },
+  swatchRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.three,
+  },
+  swatchItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
+  },
+  swatch: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.24)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  swatchSmall: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+  },
+  swatchActive: {
+    borderWidth: 2,
+    borderColor: Brand.yellow,
+  },
+  swatchCheck: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '900',
+    textShadowColor: 'rgba(0,0,0,0.6)',
+    textShadowRadius: 2,
+  },
+  swatchLabel: {
+    maxWidth: 90,
+  },
+  colorBlock: {
+    marginTop: Spacing.two,
+    gap: Spacing.two,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    borderRadius: Spacing.three,
+    padding: Spacing.three,
+  },
+  colorBlockHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   chip: {
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.16)',
@@ -799,6 +1036,8 @@ const styles = StyleSheet.create({
   description: {
     marginTop: Spacing.four,
     paddingHorizontal: Spacing.four,
+  },
+  descriptionText: {
     lineHeight: 21,
   },
   cartButton: {
