@@ -9,19 +9,39 @@
       "distribution": "internal",
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://www.printlaserstitch.com"
       }
     },
     "preview": {
       "distribution": "internal",
+      "autoIncrement": true,
       "android": {
         "buildType": "apk"
+      },
+      "ios": {
+        "distribution": "store"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://www.printlaserstitch.com"
       }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://www.printlaserstitch.com"
+      }
     }
   },
   "submit": {
-    "production": {}
+    "production": {},
+    "preview": {
+      "ios": {
+        "ascApiKeyPath": "./AuthKey.p8",
+        "ascApiKeyId": "SB9K6BBF99",
+        "ascApiKeyIssuerId": "49d77332-8a31-425b-8cf0-fd7fd767fc87"
+      }
+    }
   }
 }

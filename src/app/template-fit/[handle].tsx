@@ -572,29 +572,29 @@ function FitStudioBody({
               </ThemedText>
             </View>
           )}
-        </ScrollView>
 
-        <View style={styles.footer}>
-          {!current.confirmed && (
-            <Pressable style={styles.confirmButton} disabled={finalizing} onPress={handleConfirmSide}>
-              <ThemedText type="smallBold" style={{ color: Brand.cyan }}>
-                {availableSides.length > 1 ? `Looks good — confirm ${activeSide}` : 'Looks good'}
-              </ThemedText>
-            </Pressable>
-          )}
-          <Pressable
-            style={[styles.continueButton, (!allConfirmed || finalizing) && styles.continueButtonDisabled]}
-            disabled={!allConfirmed || finalizing}
-            onPress={handleContinueToCart}>
-            {finalizing ? (
-              <ActivityIndicator color="#000" />
-            ) : (
-              <ThemedText type="smallBold" style={styles.continueButtonText}>
-                Continue to Cart
-              </ThemedText>
+          <View style={styles.footer}>
+            {!current.confirmed && (
+              <Pressable style={styles.confirmButton} disabled={finalizing} onPress={handleConfirmSide}>
+                <ThemedText type="smallBold" style={{ color: Brand.cyan }}>
+                  {availableSides.length > 1 ? `Looks good — confirm ${activeSide}` : 'Looks good'}
+                </ThemedText>
+              </Pressable>
             )}
-          </Pressable>
-        </View>
+            <Pressable
+              style={[styles.continueButton, (!allConfirmed || finalizing) && styles.continueButtonDisabled]}
+              disabled={!allConfirmed || finalizing}
+              onPress={handleContinueToCart}>
+              {finalizing ? (
+                <ActivityIndicator color="#000" />
+              ) : (
+                <ThemedText type="smallBold" style={styles.continueButtonText}>
+                  Continue to Cart
+                </ThemedText>
+              )}
+            </Pressable>
+          </View>
+        </ScrollView>
       </SafeAreaView>
     </ScreenBackground>
   );
@@ -715,7 +715,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(244, 63, 94, 0.1)',
     padding: Spacing.two,
   },
-  footer: { padding: Spacing.four, gap: Spacing.two },
+  footer: { marginTop: Spacing.four, gap: Spacing.two },
   confirmButton: {
     borderRadius: Spacing.three,
     borderWidth: 1,
