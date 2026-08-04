@@ -46,7 +46,9 @@
           "photosPermission": "Print Laser Stitch needs access to your photos so you can upload artwork to print.",
           "cameraPermission": "Print Laser Stitch needs access to your camera so you can photograph artwork to print."
         }
-      ]
+      ],
+      "expo-image",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,

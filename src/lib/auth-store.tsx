@@ -49,16 +49,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     (async () => {
-      const stored = await SecureStore.getItemAsync(TOKEN_KEY);
-      if (stored) {
-        try {
-          const res = await api.get<{ customer: Customer }>('/api/auth/me', authHeaderFor(stored));
-          setToken(stored);
-          setCustomer(res.customer);
-        } catch {
-          // Expired/invalid — drop it silently, user just appears logged out.
-          await SecureStore.deleteItemAsync(TOKEN_KEY);
+      try {
+        const stored = await SecureStore.getItemAsync(TOKEN_KEY);
+        if (stored) {
+          try {
+            const res = await api.get<{ customer: Customer }>('/api/auth/me', authHeaderFor(stored));
+            setToken(stored);
+            setCustomer(res.customer);
+          } catch {
+            // Expired/invalid — drop it silently, user just appears logged out.
+            await SecureStore.deleteItemAsync(TOKEN_KEY);
+          }
         }
+      } catch {
+        // Keychain unreadable — treat as logged out rather than crashing startup.
       }
       setIsHydrated(true);
     })();
