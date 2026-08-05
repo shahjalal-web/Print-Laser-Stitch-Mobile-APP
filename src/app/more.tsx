@@ -5,6 +5,7 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Brand, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 
 const SITE_ORIGIN = 'https://www.printlaserstitch.com';
 
@@ -103,8 +104,10 @@ export default function MoreScreen() {
     },
   ];
 
+  const theme = useTheme();
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView style={[styles.container, { backgroundColor: theme.background }]} contentContainerStyle={styles.content}>
       {items.map((item) => (
         <Pressable key={item.label} style={styles.row} onPress={item.action}>
           <View style={styles.iconWrap}>

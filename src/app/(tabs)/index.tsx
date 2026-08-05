@@ -5,6 +5,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, View, type ColorValue } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { AppFooter } from '@/components/app-footer';
 import { CategoryCard } from '@/components/category-card';
 import { GradientText } from '@/components/gradient-text';
 import { FixedTopBar } from '@/components/menu-button';
@@ -94,7 +95,12 @@ export default function HomeScreen() {
                   check out.
                 </ThemedText>
                 <View style={styles.stickerBannerCta}>
-                  <ThemedText type="smallBold" style={styles.stickerBannerCtaText}>
+                  <ThemedText
+                    type="smallBold"
+                    style={styles.stickerBannerCtaText}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.8}>
                     Start Designing →
                   </ThemedText>
                 </View>
@@ -165,7 +171,12 @@ export default function HomeScreen() {
               </ThemedText>
               <Checklist items={['Hood Set', 'Bedside Decals', 'Full Vehicle Set', 'Back Decals']} color={Brand.yellow} />
               <View style={[styles.stickerBannerCta, { backgroundColor: Brand.cyan }]}>
-                <ThemedText type="smallBold" style={styles.stickerBannerCtaText}>
+                <ThemedText
+                  type="smallBold"
+                  style={styles.stickerBannerCtaText}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.8}>
                   Find Your Vehicle →
                 </ThemedText>
               </View>
@@ -198,7 +209,12 @@ export default function HomeScreen() {
                 color={Brand.cyan}
               />
               <View style={[styles.stickerBannerCta, { backgroundColor: Brand.cyan }]}>
-                <ThemedText type="smallBold" style={styles.stickerBannerCtaText}>
+                <ThemedText
+                  type="smallBold"
+                  style={styles.stickerBannerCtaText}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.8}>
                   Open Quick Quote →
                 </ThemedText>
               </View>
@@ -237,7 +253,12 @@ export default function HomeScreen() {
                 color={Brand.yellow}
               />
               <View style={styles.stickerBannerCta}>
-                <ThemedText type="smallBold" style={styles.stickerBannerCtaText}>
+                <ThemedText
+                  type="smallBold"
+                  style={styles.stickerBannerCtaText}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.8}>
                   Open Calculator →
                 </ThemedText>
               </View>
@@ -277,7 +298,12 @@ export default function HomeScreen() {
                 and courses from the Print Laser Stitch team.
               </ThemedText>
               <View style={[styles.stickerBannerCta, { backgroundColor: Brand.magenta }]}>
-                <ThemedText type="smallBold" style={styles.stickerBannerCtaText}>
+                <ThemedText
+                  type="smallBold"
+                  style={styles.stickerBannerCtaText}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.8}>
                   Visit the University →
                 </ThemedText>
               </View>
@@ -293,6 +319,8 @@ export default function HomeScreen() {
               <PromiseItem num="04" title="Florida print shop" text="Locally run and operated in Martin County, FL." color={Brand.yellow} />
             </View>
           </View>
+
+          <AppFooter />
         </>
       </ScrollView>
     </ScreenBackground>
@@ -472,15 +500,16 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  sectionTitle: {
     marginTop: Spacing.two,
     marginBottom: Spacing.four,
+  },
+  sectionTitle: {
     textAlign: 'center',
     textTransform: 'uppercase',
     fontSize: 30,
     lineHeight: 36,
     fontWeight: '900',
+    letterSpacing: -0.75,
   },
   centerText: {
     textAlign: 'center',

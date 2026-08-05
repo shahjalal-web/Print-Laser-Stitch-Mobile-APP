@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { EMPTY_UPLOAD_SLOT, pickAndUpload, UploadBox, type UploadSlot } from '@/components/template-fit/upload-box';
+import { FAQSection } from '@/components/faq-section';
 import { ScreenBackground } from '@/components/screen-background';
 import { ThemedText } from '@/components/themed-text';
 import { Brand, Spacing } from '@/constants/theme';
@@ -437,6 +438,8 @@ export default function VinylStickersScreen() {
             </ThemedText>
           )}
         </Pressable>
+
+        <FAQSection />
       </ScrollView>
     </ScreenBackground>
   );

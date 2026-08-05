@@ -1,9 +1,12 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Spacing } from '@/constants/theme';
+
+const SITE_ORIGIN = 'https://www.printlaserstitch.com';
 
 /** Bare hamburger button — opens the "More" sheet with links to everything
  * that doesn't have a tab of its own yet (quick quote, signage calculator,
@@ -47,8 +50,11 @@ export function FixedTopBar() {
   const insets = useSafeAreaInsets();
   return (
     <View style={[styles.fixedBar, { paddingTop: insets.top + Spacing.one }]} pointerEvents="box-none">
-      <SearchButton />
-      <MenuButton />
+      <Image source={{ uri: `${SITE_ORIGIN}/logo.avif` }} style={styles.logo} contentFit="contain" />
+      <View style={styles.headerRow}>
+        <SearchButton />
+        <MenuButton />
+      </View>
     </View>
   );
 }
@@ -67,10 +73,14 @@ const styles = StyleSheet.create({
     right: 0,
     zIndex: 10,
     flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: Spacing.two,
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: Spacing.four,
     paddingBottom: Spacing.one,
+  },
+  logo: {
+    width: 100,
+    height: 28,
   },
   button: {
     padding: Spacing.one,

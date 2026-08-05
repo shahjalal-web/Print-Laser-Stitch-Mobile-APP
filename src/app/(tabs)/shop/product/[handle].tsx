@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 
 import { ExpandableText } from '@/components/expandable-text';
+import { FAQSection } from '@/components/faq-section';
 import { QuantityStepper } from '@/components/quantity-stepper';
 import { ScreenBackground } from '@/components/screen-background';
 import { ThemedText } from '@/components/themed-text';
@@ -54,6 +55,8 @@ type Variant = {
 };
 type Option = { id: string; name: string; values: string[] };
 
+type TaxonomyColor = { name: string; hex: string | null };
+
 type Product = {
   id: string;
   handle: string;
@@ -63,6 +66,7 @@ type Product = {
   media: ShopifyMediaT[];
   options: Option[];
   variants: Variant[];
+  taxonomyColors?: TaxonomyColor[];
   templateFitOverrides?: TemplateFitOverrides;
 };
 
@@ -131,7 +135,27 @@ export default function ProductScreen() {
     () => product?.options.find((o) => isColorOptionName(o.name)) ?? null,
     [product],
   );
-  const multiColor = isApparel && !!colorOption;
+  // Color choices — real Shopify Color variant values first, plus any extra
+  // colors from the taxonomy metafield fallback (used when the product has
+  // no real Color option, e.g. it already used its 3 option slots on
+  // Fabric/Sleeve Type). Mirrors the website's TShirtConfigurator.
+  const colorChoices = useMemo(() => {
+    const variantColors = colorOption?.values ?? [];
+    const variantLower = new Set(variantColors.map((c) => c.toLowerCase().trim()));
+    const extras = (product?.taxonomyColors ?? [])
+      .map((c) => c.name)
+      .filter((n) => !variantLower.has(n.toLowerCase().trim()));
+    return [...variantColors, ...extras];
+  }, [colorOption, product?.taxonomyColors]);
+  const taxonomyHex = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const c of product?.taxonomyColors ?? []) {
+      if (c.hex) m.set(c.name.toLowerCase(), c.hex);
+    }
+    return m;
+  }, [product?.taxonomyColors]);
+  const swatchHex = (name: string) => taxonomyHex.get(name.toLowerCase()) ?? colorHex(name) ?? '#888';
+  const multiColor = isApparel && colorChoices.length > 0;
   const hasQuantityVariantOption = useMemo(
     () => product?.options.some((o) => isQuantityOptionName(o.name)) ?? false,
     [product],
@@ -186,9 +210,21 @@ export default function ProductScreen() {
 
   // Exact (color, size) match first; if this color has no SKU at this size
   // (e.g. sold out combination), fall back to any variant at that size so
-  // there's still a variant_id to attach the line to.
+  // there's still a variant_id to attach the line to. When the product has
+  // no real Color option at all (taxonomy-only colors), color isn't part of
+  // any variant's selectedOptions — match on size + other picks only, same
+  // as the website does for metafield-only colors.
   function findVariantForColorSize(color: string, size: string) {
-    if (!product || !sizeOption || !colorOption) return null;
+    if (!product || !sizeOption) return null;
+    if (!colorOption) {
+      return (
+        product.variants.find((v) =>
+          v.selectedOptions.every((o) =>
+            o.name === sizeOption.name ? o.value === size : selected[o.name] === o.value,
+          ),
+        ) ?? null
+      );
+    }
     const exact = product.variants.find((v) =>
       v.selectedOptions.every((o) => {
         if (o.name === sizeOption.name) return o.value === size;
@@ -244,6 +280,8 @@ export default function ProductScreen() {
       .filter((u): u is string => !!u);
     return fromMedia.length > 0 ? fromMedia : product.featuredImage ? [product.featuredImage.url] : [];
   }, [product]);
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const galleryRef = useRef<ScrollView>(null);
 
   const howToOrderVideoId = product ? HOW_TO_ORDER_VIDEO_IDS[product.handle] : undefined;
 
@@ -303,7 +341,8 @@ export default function ProductScreen() {
     if (!product || !canCheckout) return;
     const extraProperties = buildExtraProperties();
 
-    if (multiColor && sizeOption && colorOption) {
+    if (multiColor && sizeOption) {
+      const colorLabel = colorOption?.name ?? 'Color';
       for (const [color, sizes] of Object.entries(colorSizeQty)) {
         for (const [size, qty] of Object.entries(sizes)) {
           if (qty <= 0) continue;
@@ -320,19 +359,21 @@ export default function ProductScreen() {
             title: product.title,
             subtitle: [
               ...Object.entries(selected)
-                .filter(([k]) => k !== sizeOption.name && k !== colorOption.name)
+                .filter(([k]) => k !== sizeOption.name && k !== colorOption?.name)
                 .map(([k, v]) => `${k}: ${v}`),
-              `${colorOption.name}: ${color}`,
+              `${colorLabel}: ${color}`,
               `${sizeOption.name}: ${size}`,
             ].join(' · '),
             thumbnail: images[0] ?? '',
             unitLabel: `$${unitPrice.toFixed(2)} each`,
-            selectedOptions: { ...selected, [colorOption.name]: color, [sizeOption.name]: size },
+            selectedOptions: colorOption
+              ? { ...selected, [colorOption.name]: color, [sizeOption.name]: size }
+              : { ...selected, [sizeOption.name]: size },
             qty,
             quantity: qty,
             unitPrice,
             totalPrice: Math.round(unitPrice * qty * 100) / 100,
-            extraProperties,
+            extraProperties: colorOption ? extraProperties : { ...extraProperties, [colorLabel]: color },
           });
         }
       }
@@ -502,13 +543,43 @@ export default function ProductScreen() {
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={refetch} />}>
         {images.length > 0 && (
-          <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false} style={styles.gallery}>
-            {images.map((url) => (
-              <ThemedView key={url} type="backgroundElement" style={styles.galleryImageWrap}>
-                <Image source={{ uri: url }} style={styles.galleryImage} contentFit="cover" />
-              </ThemedView>
-            ))}
-          </ScrollView>
+          <>
+            <ScrollView
+              ref={galleryRef}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              style={styles.gallery}
+              onMomentumScrollEnd={(e) => {
+                const index = Math.round(e.nativeEvent.contentOffset.x / screenWidth);
+                setActiveImageIndex(index);
+              }}>
+              {images.map((url) => (
+                <ThemedView key={url} type="backgroundElement" style={styles.galleryImageWrap}>
+                  <Image source={{ uri: url }} style={styles.galleryImage} contentFit="cover" />
+                </ThemedView>
+              ))}
+            </ScrollView>
+
+            {images.length > 1 && (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.thumbnailRow}>
+                {images.map((url, i) => (
+                  <Pressable
+                    key={url}
+                    onPress={() => {
+                      galleryRef.current?.scrollTo({ x: i * screenWidth, animated: true });
+                      setActiveImageIndex(i);
+                    }}
+                    style={[styles.thumbnailWrap, i === activeImageIndex && styles.thumbnailWrapActive]}>
+                    <Image source={{ uri: url }} style={styles.thumbnailImage} contentFit="cover" />
+                  </Pressable>
+                ))}
+              </ScrollView>
+            )}
+          </>
         )}
 
         {!!howToOrderVideoId && (
@@ -574,11 +645,11 @@ export default function ProductScreen() {
             </View>
           ))}
 
-        {multiColor && colorOption && sizeOption && (
+        {multiColor && sizeOption && (
           <View style={styles.optionGroup}>
             <View style={styles.sizeSectionHeader}>
               <ThemedText type="smallBold" style={styles.optionLabel}>
-                {colorOption.name}
+                {colorOption?.name ?? 'Color'}
               </ThemedText>
               <ThemedText
                 type="small"
@@ -591,12 +662,12 @@ export default function ProductScreen() {
               Pick a color, set a quantity per size, then pick another color to add more.
             </ThemedText>
             <View style={styles.swatchRow}>
-              {colorOption.values.map((color) => {
+              {colorChoices.map((color) => {
                 const isActive = activeColor === color;
                 const colorQty = Object.values(colorSizeQty[color] ?? {}).reduce((a, b) => a + b, 0);
                 return (
                   <Pressable key={color} onPress={() => selectColor(color)} style={styles.swatchItem}>
-                    <View style={[styles.swatch, { backgroundColor: colorHex(color) ?? '#888' }, isActive && styles.swatchActive]}>
+                    <View style={[styles.swatch, { backgroundColor: swatchHex(color) }, isActive && styles.swatchActive]}>
                       {colorQty > 0 && <ThemedText style={styles.swatchCheck}>✓</ThemedText>}
                     </View>
                     <ThemedText type="small" numberOfLines={1} style={styles.swatchLabel}>
@@ -612,7 +683,7 @@ export default function ProductScreen() {
               <View style={styles.colorBlock}>
                 <View style={styles.colorBlockHeader}>
                   <View style={styles.swatchItem}>
-                    <View style={[styles.swatch, styles.swatchSmall, { backgroundColor: colorHex(activeColor) ?? '#888' }]} />
+                    <View style={[styles.swatch, styles.swatchSmall, { backgroundColor: swatchHex(activeColor) }]} />
                     <ThemedText type="smallBold">{activeColor}</ThemedText>
                   </View>
                 </View>
@@ -801,6 +872,8 @@ export default function ProductScreen() {
           />
         </View>
 
+        <FAQSection />
+
         <View style={styles.bottomBar}>
           {(!isApparel || totalSizeQuantity > 0) && (
             <View style={styles.bottomBarSummary}>
@@ -863,6 +936,27 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   galleryImage: {
+    width: '100%',
+    height: '100%',
+  },
+  thumbnailRow: {
+    flexDirection: 'row',
+    gap: Spacing.two,
+    paddingHorizontal: Spacing.four,
+    paddingTop: Spacing.two,
+  },
+  thumbnailWrap: {
+    width: 56,
+    height: 56,
+    borderRadius: Spacing.two,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  thumbnailWrapActive: {
+    borderColor: Brand.yellow,
+  },
+  thumbnailImage: {
     width: '100%',
     height: '100%',
   },
