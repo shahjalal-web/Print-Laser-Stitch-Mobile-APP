@@ -18,6 +18,7 @@ export default function AppTabs() {
       <NativeTabs.Trigger name="index">
         <NativeTabs.Trigger.Label>Home</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
+          sf={{ default: 'house', selected: 'house.fill' }}
           src={<NativeTabs.Trigger.VectorIcon family={Ionicons} name="home-outline" />}
           selectedColor={Brand.yellow}
         />
@@ -26,6 +27,7 @@ export default function AppTabs() {
       <NativeTabs.Trigger name="shop">
         <NativeTabs.Trigger.Label>Shop</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
+          sf={{ default: 'tag', selected: 'tag.fill' }}
           src={<NativeTabs.Trigger.VectorIcon family={Ionicons} name="pricetags-outline" />}
           selectedColor={Brand.yellow}
         />
@@ -34,6 +36,7 @@ export default function AppTabs() {
       <NativeTabs.Trigger name="cart">
         <NativeTabs.Trigger.Label>Cart</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
+          sf={{ default: 'cart', selected: 'cart.fill' }}
           src={<NativeTabs.Trigger.VectorIcon family={Ionicons} name="cart-outline" />}
           selectedColor={Brand.yellow}
         />
@@ -43,6 +46,7 @@ export default function AppTabs() {
       <NativeTabs.Trigger name="account">
         <NativeTabs.Trigger.Label>Account</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
+          sf={{ default: 'person', selected: 'person.fill' }}
           src={<NativeTabs.Trigger.VectorIcon family={Ionicons} name="person-outline" />}
           selectedColor={Brand.yellow}
         />
