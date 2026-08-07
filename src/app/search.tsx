@@ -1,8 +1,8 @@
-import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, TextInput } from 'react-native';
 
+import { NetworkImage } from '@/components/network-image';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
@@ -76,11 +76,13 @@ export default function SearchScreen() {
               });
             }}>
             <ThemedView type="backgroundElement" style={styles.thumbWrap}>
-              {item.thumbnail ? (
-                <Image source={{ uri: item.thumbnail }} style={styles.thumb} contentFit="cover" />
-              ) : (
-                <ThemedText style={styles.thumbFallback}>📦</ThemedText>
-              )}
+              <NetworkImage
+                uri={item.thumbnail}
+                width={48}
+                style={styles.thumb}
+                contentFit="cover"
+                fallback={<ThemedText style={styles.thumbFallback}>📦</ThemedText>}
+              />
             </ThemedView>
             <ThemedText type="small" style={styles.rowTitle} numberOfLines={1}>
               {item.title}

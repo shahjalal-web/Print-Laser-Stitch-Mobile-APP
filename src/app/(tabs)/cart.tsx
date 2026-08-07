@@ -1,10 +1,10 @@
-import { Image } from 'expo-image';
 import * as WebBrowser from 'expo-web-browser';
 import { useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { FixedTopBar } from '@/components/menu-button';
+import { NetworkImage } from '@/components/network-image';
 import { ScreenBackground } from '@/components/screen-background';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -101,7 +101,13 @@ export default function CartScreen() {
             <View key={item.id} style={styles.row}>
               <ThemedView type="backgroundElement" style={styles.thumbWrap}>
                 {item.thumbnail.startsWith('http') || item.thumbnail.startsWith('/') ? (
-                  <Image source={{ uri: item.thumbnail }} style={styles.thumb} contentFit="cover" />
+                  <NetworkImage
+                    uri={item.thumbnail}
+                    width={90}
+                    style={styles.thumb}
+                    contentFit="cover"
+                    fallback={<ThemedText style={styles.thumbEmoji}>📦</ThemedText>}
+                  />
                 ) : (
                   !!item.thumbnail && <ThemedText style={styles.thumbEmoji}>{item.thumbnail}</ThemedText>
                 )}

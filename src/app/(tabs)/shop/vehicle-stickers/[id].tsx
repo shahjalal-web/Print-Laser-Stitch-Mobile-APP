@@ -1,8 +1,8 @@
-import { Image } from 'expo-image';
 import { useLocalSearchParams, useNavigation } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
+import { NetworkImage } from '@/components/network-image';
 import { ScreenBackground } from '@/components/screen-background';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -121,11 +121,13 @@ export default function VehicleDetailScreen() {
             return (
               <View key={part} style={styles.partCard}>
                 <ThemedView type="backgroundElement" style={styles.partImageWrap}>
-                  {img ? (
-                    <Image source={{ uri: img }} style={styles.partImage} contentFit="cover" />
-                  ) : (
-                    <ThemedText style={styles.partIcon}>{PART_ICONS[part]}</ThemedText>
-                  )}
+                  <NetworkImage
+                    uri={img}
+                    width={170}
+                    style={styles.partImage}
+                    contentFit="cover"
+                    fallback={<ThemedText style={styles.partIcon}>{PART_ICONS[part]}</ThemedText>}
+                  />
                 </ThemedView>
                 <ThemedText type="smallBold">{PART_LABELS[part]}</ThemedText>
                 {!!info.skinName && (

@@ -16,6 +16,7 @@ import {
 
 import { ExpandableText } from '@/components/expandable-text';
 import { FAQSection } from '@/components/faq-section';
+import { NetworkImage } from '@/components/network-image';
 import { QuantityStepper } from '@/components/quantity-stepper';
 import { ScreenBackground } from '@/components/screen-background';
 import { ThemedText } from '@/components/themed-text';
@@ -490,7 +491,7 @@ export default function ProductScreen() {
     };
 
     router.push({
-      pathname: '/template-fit/[handle]',
+      pathname: '/shop/template-fit/[handle]',
       params: { handle: product.handle, payload: JSON.stringify(payload) },
     });
   }
@@ -556,7 +557,7 @@ export default function ProductScreen() {
               }}>
               {images.map((url) => (
                 <ThemedView key={url} type="backgroundElement" style={styles.galleryImageWrap}>
-                  <Image source={{ uri: url }} style={styles.galleryImage} contentFit="cover" />
+                  <NetworkImage uri={url} width={screenWidth} style={styles.galleryImage} contentFit="cover" />
                 </ThemedView>
               ))}
             </ScrollView>
@@ -574,7 +575,7 @@ export default function ProductScreen() {
                       setActiveImageIndex(i);
                     }}
                     style={[styles.thumbnailWrap, i === activeImageIndex && styles.thumbnailWrapActive]}>
-                    <Image source={{ uri: url }} style={styles.thumbnailImage} contentFit="cover" />
+                    <NetworkImage uri={url} width={60} style={styles.thumbnailImage} contentFit="cover" />
                   </Pressable>
                 ))}
               </ScrollView>
@@ -592,8 +593,9 @@ export default function ProductScreen() {
               onPress={() =>
                 WebBrowser.openBrowserAsync(`https://www.youtube.com/watch?v=${howToOrderVideoId}`)
               }>
-              <Image
-                source={{ uri: `https://img.youtube.com/vi/${howToOrderVideoId}/hqdefault.jpg` }}
+              <NetworkImage
+                uri={`https://img.youtube.com/vi/${howToOrderVideoId}/hqdefault.jpg`}
+                width={screenWidth - Spacing.four * 2}
                 style={styles.videoThumb}
                 contentFit="cover"
               />

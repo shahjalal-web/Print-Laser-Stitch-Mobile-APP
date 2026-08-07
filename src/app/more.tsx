@@ -33,7 +33,7 @@ export default function MoreScreen() {
       icon: 'color-wand-outline',
       action: () => {
         router.dismiss();
-        router.push('/vinyl-stickers');
+        router.push('/shop/vinyl-stickers');
       },
     },
     {
@@ -42,7 +42,7 @@ export default function MoreScreen() {
       icon: 'images-outline',
       action: () => {
         router.dismiss();
-        router.push('/gallery');
+        router.push('/shop/gallery');
       },
     },
     {
@@ -51,7 +51,7 @@ export default function MoreScreen() {
       icon: 'car-sport-outline',
       action: () => {
         router.dismiss();
-        router.push('/vehicle-stickers');
+        router.push('/shop/vehicle-stickers');
       },
     },
     {
@@ -69,7 +69,7 @@ export default function MoreScreen() {
       icon: 'calculator-outline',
       action: () => {
         router.dismiss();
-        router.push('/decal-quote');
+        router.push('/shop/decal-quote');
       },
     },
     {
@@ -78,7 +78,7 @@ export default function MoreScreen() {
       icon: 'construct-outline',
       action: () => {
         router.dismiss();
-        router.push('/signage-quotes');
+        router.push('/shop/signage-quotes');
       },
     },
     {
@@ -99,7 +99,7 @@ export default function MoreScreen() {
       icon: 'information-circle-outline',
       action: () => {
         router.dismiss();
-        router.push('/about');
+        router.push('/shop/about');
       },
     },
   ];

@@ -1,9 +1,9 @@
-import { Image } from 'expo-image';
 import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useEffect } from 'react';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { NetworkImage } from '@/components/network-image';
 import { ScreenBackground } from '@/components/screen-background';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -68,6 +68,9 @@ export default function CategoryScreen() {
           numColumns={2}
           columnWrapperStyle={styles.row}
           contentContainerStyle={styles.list}
+          initialNumToRender={6}
+          maxToRenderPerBatch={6}
+          windowSize={5}
           refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={refetch} />}
           ListEmptyComponent={
             <ThemedText themeColor="textSecondary" style={styles.centerText}>
@@ -89,11 +92,13 @@ export default function CategoryScreen() {
                 })
               }>
               <ThemedView type="backgroundElement" style={styles.imageWrap}>
-                {item.featuredImage ? (
-                  <Image source={{ uri: item.featuredImage.url }} style={styles.image} contentFit="cover" />
-                ) : (
-                  <ThemedText style={styles.imageFallback}>🗂️</ThemedText>
-                )}
+                <NetworkImage
+                  uri={item.featuredImage?.url}
+                  width={170}
+                  style={styles.image}
+                  contentFit="cover"
+                  fallback={<ThemedText style={styles.imageFallback}>🗂️</ThemedText>}
+                />
               </ThemedView>
               <ThemedText type="smallBold" numberOfLines={2} style={styles.title}>
                 {item.title}

@@ -1,9 +1,11 @@
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
+import { Image } from 'expo-image';
 import { Linking, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { ScreenBackground } from '@/components/screen-background';
 import { ThemedText } from '@/components/themed-text';
+import { EMPTY_UPLOAD_SLOT, pickAndUpload, UploadBox, type UploadSlot } from '@/components/template-fit/upload-box';
 import { Brand, Spacing } from '@/constants/theme';
 import { useCart } from '@/lib/cart-store';
 import type { DecalCartItem, DecalPanelLine } from '@/lib/cart-types';
@@ -15,9 +17,12 @@ type Panel = {
   width: string;
   height: string;
   description: string;
+  imageUrl?: string;
+  imageUri?: string;
+  note: string;
 };
 
-const EMPTY_PANEL_FORM = { type: 'door' as PanelType, width: '', height: '', description: '' };
+const EMPTY_PANEL_FORM = { type: 'door' as PanelType, width: '', height: '', description: '', note: '' };
 
 export default function DecalQuoteScreen() {
   const { addItem } = useCart();
@@ -27,6 +32,7 @@ export default function DecalQuoteScreen() {
   const [customPricePerSqFt, setCustomPricePerSqFt] = useState('');
   const [discountPercent, setDiscountPercent] = useState('0');
   const [notes, setNotes] = useState('');
+  const [panelImage, setPanelImage] = useState<UploadSlot>(EMPTY_UPLOAD_SLOT);
   const [toast, setToast] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
 
@@ -50,11 +56,25 @@ export default function DecalQuoteScreen() {
       setToast('Please enter valid width and height in inches.');
       return;
     }
+    if (panelImage.isUploading) {
+      setToast('Please wait for the reference photo to finish uploading.');
+      return;
+    }
     setPanels((prev) => [
       ...prev,
-      { id: `panel-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, type: form.type, width: form.width, height: form.height, description: form.description.trim() },
+      {
+        id: `panel-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        type: form.type,
+        width: form.width,
+        height: form.height,
+        description: form.description.trim(),
+        imageUrl: panelImage.fileUrl ?? undefined,
+        imageUri: panelImage.file?.uri,
+        note: form.note.trim(),
+      },
     ]);
     setForm(EMPTY_PANEL_FORM);
+    setPanelImage(EMPTY_UPLOAD_SLOT);
     setToast(null);
   }
 
@@ -80,6 +100,8 @@ export default function DecalQuoteScreen() {
       width: Number(p.width),
       height: Number(p.height),
       description: p.description || undefined,
+      imageUrl: p.imageUrl,
+      note: p.note || undefined,
     }));
 
     const cartItem: Omit<DecalCartItem, 'id' | 'addedAt'> = {
@@ -99,7 +121,7 @@ export default function DecalQuoteScreen() {
       subtotal: result.subtotal,
       taxAmount: result.taxAmount,
       notes: notes.trim() || undefined,
-      editHref: '/decal-quote',
+      editHref: '/shop/decal-quote',
     };
 
     addItem(cartItem);
@@ -192,6 +214,33 @@ export default function DecalQuoteScreen() {
               style={styles.numberFieldInput}
             />
           </View>
+          <View style={styles.panelUploadRow}>
+            <View style={styles.panelUploadBox}>
+              <ThemedText type="small" themeColor="textSecondary" style={styles.numberFieldLabel}>
+                REFERENCE PHOTO (OPTIONAL)
+              </ThemedText>
+              <UploadBox
+                slot={panelImage}
+                onSelect={() => pickAndUpload(setPanelImage)}
+                onClear={() => setPanelImage(EMPTY_UPLOAD_SLOT)}
+                hint="PNG · JPG"
+              />
+            </View>
+            <View style={{ flex: 1, gap: 4 }}>
+              <ThemedText type="small" themeColor="textSecondary" style={styles.numberFieldLabel}>
+                NOTE (OPTIONAL)
+              </ThemedText>
+              <TextInput
+                value={form.note}
+                onChangeText={(v) => setForm((f) => ({ ...f, note: v }))}
+                placeholder="Anything about this photo or panel…"
+                placeholderTextColor="rgba(245,245,245,0.4)"
+                multiline
+                numberOfLines={3}
+                style={[styles.numberFieldInput, styles.panelNoteInput]}
+              />
+            </View>
+          </View>
           <Pressable style={styles.addPanelButton} onPress={addPanel}>
             <ThemedText type="smallBold" style={styles.addPanelButtonText}>
               + Add Panel
@@ -214,11 +263,17 @@ export default function DecalQuoteScreen() {
                 return (
                   <View key={p.id} style={styles.panelRow}>
                     <View style={styles.panelRowHeader}>
+                      {!!p.imageUri && <Image source={{ uri: p.imageUri }} style={styles.panelThumb} contentFit="cover" />}
                       <View style={{ flex: 1 }}>
                         <ThemedText type="smallBold">Panel {idx + 1}</ThemedText>
                         {!!p.description && (
                           <ThemedText type="small" themeColor="textSecondary">
                             {p.description}
+                          </ThemedText>
+                        )}
+                        {!!p.note && (
+                          <ThemedText type="small" themeColor="textSecondary" style={styles.panelNote}>
+                            {p.note}
                           </ThemedText>
                         )}
                       </View>
@@ -446,7 +501,12 @@ const styles = StyleSheet.create({
     padding: Spacing.three,
     gap: 4,
   },
-  panelRowHeader: { flexDirection: 'row', alignItems: 'flex-start' },
+  panelRowHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.two },
+  panelThumb: { width: 40, height: 40, borderRadius: Spacing.one, backgroundColor: 'rgba(255,255,255,0.05)' },
+  panelNote: { fontStyle: 'italic' },
+  panelUploadRow: { flexDirection: 'row', gap: Spacing.three },
+  panelUploadBox: { width: 96 },
+  panelNoteInput: { flex: 1, height: 78, textAlignVertical: 'top' },
   textArea: {
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.16)',

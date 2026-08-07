@@ -7,7 +7,7 @@ import { ScreenBackground } from '@/components/screen-background';
 import { emitProofBridgeResult } from '@/lib/proof-bridge';
 
 /** Landing screen for the mobile-proof web page's redirect
- * (printlaserstitchmobile://vinyl-stickers-proof?...). Forwards the result
+ * (printlaserstitchmobile://shop/vinyl-stickers-proof?...). Forwards the result
  * to the vinyl-stickers screen underneath via proof-bridge, then pops
  * itself off the stack immediately so the configurator is left untouched. */
 export default function VinylStickersProofScreen() {
@@ -36,7 +36,7 @@ export default function VinylStickersProofScreen() {
     if (router.canGoBack()) {
       router.back();
     } else {
-      router.replace('/vinyl-stickers');
+      router.replace('/shop/vinyl-stickers');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

@@ -26,7 +26,7 @@ import {
 import { isPreviewIncompatible } from '@/lib/template-fit/upload';
 
 type Proof = NonNullable<VinylStickerCartItem['proof']>;
-const PROOF_RETURN_SCHEME = 'printlaserstitchmobile://vinyl-stickers-proof';
+const PROOF_RETURN_SCHEME = 'printlaserstitchmobile://shop/vinyl-stickers-proof';
 
 const SITE_ORIGIN = 'https://www.printlaserstitch.com';
 const MIN_CUSTOM_QTY = 25;
@@ -203,7 +203,7 @@ export default function VinylStickersScreen() {
       fileUrl: upload.fileUrl ?? undefined,
       fileName: upload.file.name,
       instructions: instructions || undefined,
-      editHref: '/vinyl-stickers',
+      editHref: '/shop/vinyl-stickers',
       proof: proof ?? undefined,
     });
     router.push('/cart');

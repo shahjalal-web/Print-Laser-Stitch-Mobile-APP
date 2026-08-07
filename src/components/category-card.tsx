@@ -1,7 +1,7 @@
-import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { NetworkImage } from '@/components/network-image';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import type { CategoryTheme } from '@/lib/category-themes';
@@ -50,13 +50,13 @@ export function CategoryCard({
           </ThemedText>
         </LinearGradient>
       </View>
-      {imageUrl ? (
-        <Image source={{ uri: imageUrl }} style={styles.image} contentFit="contain" />
-      ) : (
-        <View style={styles.imageFallback}>
-          <ThemedText style={styles.imageFallbackEmoji}>🗂️</ThemedText>
-        </View>
-      )}
+      <NetworkImage
+        uri={imageUrl}
+        width={180}
+        style={styles.image}
+        contentFit="contain"
+        fallback={<ThemedText style={styles.imageFallbackEmoji}>🗂️</ThemedText>}
+      />
     </Pressable>
   );
 }
@@ -89,12 +89,6 @@ const styles = StyleSheet.create({
   image: {
     flex: 1,
     margin: Spacing.two,
-  },
-  imageFallback: {
-    flex: 1,
-    margin: Spacing.two,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   imageFallbackEmoji: {
     fontSize: 44,

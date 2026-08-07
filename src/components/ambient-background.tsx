@@ -1,6 +1,8 @@
-import { useEffect } from 'react';
+import { useFocusEffect } from 'expo-router';
+import { useCallback } from 'react';
 import { Dimensions, StyleSheet, View } from 'react-native';
 import Animated, {
+  cancelAnimation,
   Easing,
   useAnimatedStyle,
   useSharedValue,
@@ -23,8 +25,11 @@ const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 // High ring count so the concentric strokes blend into a smooth gradient
 // instead of reading as visible "contour line" bands — the website's CSS
 // blur(100px) has no discrete steps at all, so more (thinner) rings gets
-// closer to that continuous falloff.
-const RING_COUNT = 56;
+// closer to that continuous falloff. Kept moderate (not the site's original
+// count) since each ring is a real bordered View — this stack gets
+// rasterized to a single bitmap below, but the one-time layout/rasterize
+// cost per mounted screen still scales with ring count.
+const RING_COUNT = 32;
 
 function Orb({
   size,
@@ -47,13 +52,28 @@ function Orb({
 }) {
   const progress = useSharedValue(0);
 
-  useEffect(() => {
-    progress.value = withRepeat(
-      withTiming(1, { duration, easing: Easing.inOut(Easing.sin) }),
-      -1,
-      true,
-    );
-  }, [progress, duration]);
+  // `enableFreeze` (react-native-screens) stops this screen's React tree
+  // from re-rendering once it's off-focus, but it does NOT touch an
+  // already-running Reanimated animation — withRepeat(-1) keeps ticking on
+  // the UI thread forever regardless of React's freeze state, since it
+  // doesn't depend on renders to keep going. So every screen the user had
+  // ever visited kept animating in the background simultaneously, which is
+  // what actually drove the sustained CPU usage behind the watchdog kill —
+  // explicitly starting/cancelling the animation on focus/blur is the only
+  // way to actually stop it while the screen isn't visible.
+  useFocusEffect(
+    useCallback(() => {
+      progress.value = withRepeat(
+        withTiming(1, { duration, easing: Easing.inOut(Easing.sin) }),
+        -1,
+        true,
+      );
+      return () => {
+        cancelAnimation(progress);
+      };
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [duration]),
+  );
 
   const style = useAnimatedStyle(() => ({
     transform: [
@@ -65,7 +85,17 @@ function Orb({
   const bandWidth = size / 2 / RING_COUNT;
 
   return (
-    <Animated.View style={[styles.orb, { width: size, height: size }, style]}>
+    <Animated.View
+      style={[styles.orb, { width: size, height: size }, style]}
+      // The ring stack itself never changes — only its position does — so
+      // cache it as a single bitmap and let the compositor translate that,
+      // instead of re-stroking every ring's border on every animation frame.
+      // Without this, the continuous per-frame CoreGraphics redraw of 3 x
+      // dozens of bordered circles was pegging the CPU for as long as any
+      // screen using this background stayed mounted, which is what actually
+      // triggered the CPU-watchdog app termination on the client's device.
+      shouldRasterizeIOS
+      renderToHardwareTextureAndroid>
       {Array.from({ length: RING_COUNT }).map((_, i) => {
         // i=0 is the outermost (largest, faintest) ring; higher i is smaller
         // and denser toward the center. Each ring is a hollow outline (not a

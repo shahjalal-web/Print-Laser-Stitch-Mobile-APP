@@ -68,10 +68,10 @@ export default function HomeScreen() {
             />
 
             <View style={styles.ctaRow}>
-              <CtaButton label="Get a Quote →" colors={[Brand.yellow, Brand.yellowStrong]} onPress={() => router.push('/vinyl-stickers')} />
+              <CtaButton label="Get a Quote →" colors={[Brand.yellow, Brand.yellowStrong]} onPress={() => router.push('/shop/decal-quote')} />
               <CtaButton label="Browse Products →" colors={[Brand.cyan, Brand.cyanStrong]} onPress={() => router.push('/shop')} />
             </View>
-            <Pressable onPress={() => router.push('/gallery')} style={({ pressed }) => [styles.galleryButton, pressed && styles.pressed]}>
+            <Pressable onPress={() => router.push('/shop/gallery')} style={({ pressed }) => [styles.galleryButton, pressed && styles.pressed]}>
               <ThemedText type="smallBold" style={styles.galleryButtonText}>
                 View Our Gallery →
               </ThemedText>
@@ -79,7 +79,7 @@ export default function HomeScreen() {
           </View>
 
           {/* Custom Sticker Builder banner */}
-          <Pressable style={styles.section} onPress={() => router.push('/vinyl-stickers')}>
+          <Pressable style={styles.section} onPress={() => router.push('/shop/vinyl-stickers')}>
             <View style={styles.stickerBanner}>
               <LinearGradient
                 colors={['#ffb366', '#ffb366', '#ff8c1a', '#ff8c1a']}
@@ -154,7 +154,7 @@ export default function HomeScreen() {
           </View>
 
           {/* Vehicle sticker kits banner */}
-          <Pressable style={styles.section} onPress={() => router.push('/vehicle-stickers')}>
+          <Pressable style={styles.section} onPress={() => router.push('/shop/vehicle-stickers')}>
             <View style={styles.vehicleBanner}>
               <Badge text="Vehicle-specific decal kits" />
               <View style={styles.bannerTitleRow}>
@@ -189,7 +189,7 @@ export default function HomeScreen() {
           </Pressable>
 
           {/* Quick Quote Calculator banner */}
-          <Pressable style={styles.section} onPress={() => router.push('/decal-quote')}>
+          <Pressable style={styles.section} onPress={() => router.push('/shop/decal-quote')}>
             <View style={styles.vehicleBanner}>
               <Badge text="Window film · Wall vinyl" />
               <View style={styles.bannerTitleRow}>
@@ -233,7 +233,7 @@ export default function HomeScreen() {
           </Pressable>
 
           {/* Decal Signage Calculator banner */}
-          <Pressable style={styles.section} onPress={() => router.push('/signage-quotes')}>
+          <Pressable style={styles.section} onPress={() => router.push('/shop/signage-quotes')}>
             <View style={[styles.vehicleBanner, { borderColor: 'rgba(217, 240, 0, 0.3)' }]}>
               <Badge text="Print & install quote generator" />
               <View style={styles.bannerTitleRow}>

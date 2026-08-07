@@ -1,9 +1,9 @@
-import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { NetworkImage } from '@/components/network-image';
 import { ScreenBackground } from '@/components/screen-background';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -110,6 +110,9 @@ export default function VehicleStickersScreen() {
           numColumns={2}
           columnWrapperStyle={styles.row}
           contentContainerStyle={styles.list}
+          initialNumToRender={6}
+          maxToRenderPerBatch={6}
+          windowSize={5}
           refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={refetch} tintColor={Brand.cyan} />}
           ListEmptyComponent={
             <ThemedText themeColor="textSecondary" style={styles.centerText}>
@@ -117,13 +120,15 @@ export default function VehicleStickersScreen() {
             </ThemedText>
           }
           renderItem={({ item: v }) => (
-            <Pressable style={styles.card} onPress={() => router.push({ pathname: '/vehicle-stickers/[id]', params: { id: v.id } })}>
+            <Pressable style={styles.card} onPress={() => router.push({ pathname: '/shop/vehicle-stickers/[id]', params: { id: v.id } })}>
               <ThemedView type="backgroundElement" style={styles.imageWrap}>
-                {v.imageUrl ? (
-                  <Image source={{ uri: v.imageUrl }} style={styles.image} contentFit="cover" />
-                ) : (
-                  <ThemedText style={styles.imageFallback}>🚗</ThemedText>
-                )}
+                <NetworkImage
+                  uri={v.imageUrl}
+                  width={170}
+                  style={styles.image}
+                  contentFit="cover"
+                  fallback={<ThemedText style={styles.imageFallback}>🚗</ThemedText>}
+                />
               </ThemedView>
               <ThemedText type="smallBold" numberOfLines={1}>
                 {v.make}

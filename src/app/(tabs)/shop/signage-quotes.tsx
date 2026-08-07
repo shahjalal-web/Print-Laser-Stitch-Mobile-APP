@@ -2,8 +2,10 @@ import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
+import { MultiImageUpload } from '@/components/multi-image-upload';
 import { ScreenBackground } from '@/components/screen-background';
 import { ThemedText } from '@/components/themed-text';
+import type { UploadSlot } from '@/components/template-fit/upload-box';
 import { Brand, Spacing } from '@/constants/theme';
 import { useCart } from '@/lib/cart-store';
 import type { SignageCartItem } from '@/lib/cart-types';
@@ -24,6 +26,7 @@ export default function SignageQuotesScreen() {
   const [discountPercent, setDiscountPercent] = useState('0');
   const [servicePlan, setServicePlan] = useState<ServicePlanKey>('full-install');
   const [notes, setNotes] = useState('');
+  const [images, setImages] = useState<UploadSlot[]>([]);
   const [toast, setToast] = useState<string | null>(null);
 
   const result = useMemo(
@@ -52,6 +55,8 @@ export default function SignageQuotesScreen() {
     }
     setToast(null);
 
+    const imageUrls = images.map((s) => s.fileUrl).filter((url): url is string => !!url);
+
     const cartItem: Omit<SignageCartItem, 'id' | 'addedAt'> = {
       kind: 'signage',
       title: `Decal Signage · ${currentPlan.label}`,
@@ -72,7 +77,8 @@ export default function SignageQuotesScreen() {
       discountPercent: Number(discountPercent) || 0,
       subtotal: result.subtotal,
       notes: notes.trim() || undefined,
-      editHref: '/signage-quotes',
+      imageUrls: imageUrls.length > 0 ? imageUrls : undefined,
+      editHref: '/shop/signage-quotes',
     };
 
     addItem(cartItem);
@@ -189,6 +195,13 @@ export default function SignageQuotesScreen() {
             numberOfLines={3}
             style={styles.textArea}
           />
+        </Section>
+
+        <Section step={4} title="Reference images" optional>
+          <MultiImageUpload images={images} onImagesChange={setImages} />
+          <ThemedText type="small" themeColor="textSecondary">
+            Add photos of the wall, vehicle, or install location — it helps our design team prep your job faster.
+          </ThemedText>
         </Section>
 
         <View style={[styles.summaryCard, { backgroundColor: visual.color }]}>

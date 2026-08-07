@@ -1,9 +1,9 @@
-import { Image } from 'expo-image';
 import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { NetworkImage } from '@/components/network-image';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Brand, Spacing } from '@/constants/theme';
@@ -88,6 +88,9 @@ export default function GalleryScreen() {
           numColumns={2}
           columnWrapperStyle={styles.row}
           contentContainerStyle={styles.list}
+          initialNumToRender={6}
+          maxToRenderPerBatch={6}
+          windowSize={5}
           ListEmptyComponent={
             <ThemedText themeColor="textSecondary" style={styles.centerText}>
               {items && items.length === 0 ? 'Our gallery is being updated — check back soon.' : 'No projects in this category yet.'}
@@ -98,7 +101,13 @@ export default function GalleryScreen() {
               style={styles.card}
               onPress={() => item.mediaType === 'video' && WebBrowser.openBrowserAsync(item.mediaUrl)}>
               <ThemedView type="backgroundElement" style={styles.imageWrap}>
-                <Image source={{ uri: item.mediaUrl }} style={styles.image} contentFit="cover" />
+                <NetworkImage
+                  uri={item.mediaUrl}
+                  width={170}
+                  style={styles.image}
+                  contentFit="cover"
+                  fallback={<ThemedText style={styles.imageFallback}>🖼️</ThemedText>}
+                />
                 {item.mediaType === 'video' && (
                   <View style={styles.playBadge}>
                     <ThemedText style={styles.playIcon}>▶</ThemedText>
@@ -158,6 +167,9 @@ const styles = StyleSheet.create({
   image: {
     width: '100%',
     height: '100%',
+  },
+  imageFallback: {
+    fontSize: 40,
   },
   playBadge: {
     position: 'absolute',
