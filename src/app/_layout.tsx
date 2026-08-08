@@ -5,6 +5,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { enableFreeze } from 'react-native-screens';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
+import { HeaderBackButton } from '@/components/menu-button';
 import { AuthProvider } from '@/lib/auth-store';
 import { CartProvider } from '@/lib/cart-store';
 import { CrashScreen, ErrorBoundary, installGlobalErrorHandler, useGlobalCrashError } from '@/lib/crash-diagnostics';
@@ -38,7 +39,10 @@ export default function RootLayout() {
                 <Stack.Screen name="search" options={{ presentation: 'modal', headerShown: true, title: 'Search' }} />
                 <Stack.Screen name="more" options={{ presentation: 'modal', headerShown: true, title: 'More' }} />
                 <Stack.Screen name="login" options={{ presentation: 'modal', headerShown: true, title: 'Log In' }} />
-                <Stack.Screen name="signup" options={{ presentation: 'modal', headerShown: true, title: 'Sign Up' }} />
+                <Stack.Screen
+                  name="signup"
+                  options={{ presentation: 'modal', headerShown: true, title: 'Sign Up', headerLeft: () => <HeaderBackButton /> }}
+                />
               </Stack>
             </CartProvider>
           </AuthProvider>

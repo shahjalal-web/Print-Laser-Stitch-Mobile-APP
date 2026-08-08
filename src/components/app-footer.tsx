@@ -5,12 +5,12 @@ import { ThemedText } from '@/components/themed-text';
 import { Brand, Spacing } from '@/constants/theme';
 
 const HOURS: { day: string; time: string }[] = [
-  { day: 'Mon', time: '9am–5pm' },
-  { day: 'Tue', time: '9am–5pm' },
-  { day: 'Wed', time: '9am–5pm' },
-  { day: 'Thu', time: '9am–5pm' },
-  { day: 'Fri', time: '9am–5pm' },
-  { day: 'Sat', time: '9am–5pm' },
+  { day: 'Mon', time: '7:30am–5:30pm' },
+  { day: 'Tue', time: '7:30am–5:30pm' },
+  { day: 'Wed', time: '7:30am–5:30pm' },
+  { day: 'Thu', time: '7:30am–5:30pm' },
+  { day: 'Fri', time: '7:30am–5:30pm' },
+  { day: 'Sat', time: '10am–1:30pm' },
   { day: 'Sun', time: 'Closed' },
 ];
 
@@ -59,6 +59,22 @@ export function AppFooter() {
           <Ionicons name="mail-outline" size={15} color={Brand.cyan} />
           <ThemedText type="small" style={{ color: Brand.cyan }}>
             info@printlaserstitch.com
+          </ThemedText>
+        </Pressable>
+        <Pressable onPress={() => Linking.openURL('tel:+17729852854')} style={styles.emailRow}>
+          <Ionicons name="call-outline" size={15} color={Brand.cyan} />
+          <ThemedText type="small" style={{ color: Brand.cyan }}>
+            (772) 985-2854
+          </ThemedText>
+        </Pressable>
+        <Pressable
+          onPress={() =>
+            Linking.openURL('https://www.google.com/maps/search/?api=1&query=3141+SE+Dominica+Terrace%2C+Stuart%2C+FL+34997')
+          }
+          style={styles.emailRow}>
+          <Ionicons name="location-outline" size={15} color={Brand.cyan} />
+          <ThemedText type="small" style={[{ color: Brand.cyan }, styles.addressText]}>
+            3141 SE Dominica Terrace, Stuart, FL 34997
           </ThemedText>
         </Pressable>
       </View>
@@ -127,6 +143,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.one,
     marginTop: Spacing.one,
+  },
+  addressText: {
+    flexShrink: 1,
   },
   copyright: {
     textAlign: 'center',

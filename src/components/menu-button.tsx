@@ -20,6 +20,20 @@ export function MenuButton() {
   );
 }
 
+/** Explicit back control for Stack screens presented as a modal —
+ * `presentation: 'modal'` screens don't get a back/close button in the
+ * native header for free the way regular pushed screens do, so any modal
+ * screen reachable by more than one path (e.g. signup, pushed both from the
+ * Account tab and swapped in from the login screen) needs one wired in via
+ * `headerLeft`. */
+export function HeaderBackButton() {
+  return (
+    <Pressable style={styles.button} onPress={() => router.back()} hitSlop={8}>
+      <Ionicons name="chevron-back" size={26} color="#f5f5f5" />
+    </Pressable>
+  );
+}
+
 export function SearchButton() {
   return (
     <Pressable style={styles.button} onPress={() => router.push('/search')} hitSlop={8}>

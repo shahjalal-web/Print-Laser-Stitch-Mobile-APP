@@ -88,6 +88,12 @@ export default function MoreScreen() {
       action: () => WebBrowser.openBrowserAsync('https://printlaserstitchuniversity.com/'),
     },
     {
+      label: 'Portal',
+      description: 'Customer login and order management',
+      icon: 'lock-closed-outline',
+      action: () => WebBrowser.openBrowserAsync('https://printlaserstitch.app/'),
+    },
+    {
       label: 'Blog',
       description: 'Tips, guides and updates',
       icon: 'newspaper-outline',

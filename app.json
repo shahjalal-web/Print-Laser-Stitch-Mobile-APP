@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "print-laser-stitch-mobile",
+    "name": "Print Laser Stitch",
     "slug": "print-laser-stitch-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -8,7 +8,6 @@
     "scheme": "printlaserstitchmobile",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon",
       "bundleIdentifier": "com.printlaserstitch.mobile",
       "config": {
         "usesNonExemptEncryption": false
@@ -17,7 +16,7 @@
     "android": {
       "package": "com.printlaserstitch.mobile",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#0b0c10",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
@@ -33,9 +32,9 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 76
+          "backgroundColor": "#0b0c10",
+          "image": "./assets/images/icon.png",
+          "imageWidth": 260
         }
       ],
       "expo-secure-store",
@@ -60,6 +59,6 @@
         "projectId": "4cbb2605-0640-44dc-b053-bec9f1429cef"
       }
     },
-    "owner": "shah_jalal_wev"
+    "owner": "anthonyvalcours-team"
   }
 }
